@@ -3,101 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>YouTube 筆記播放器</title>
+  <title>YouTube 筆記播放器（含字幕）</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      display: flex;
-      flex-direction: column;
-      height: 100vh;
-    }
-
-    .top-bar {
-      padding: 10px;
-      background: #f4f4f4;
-      display: flex;
-      gap: 10px;
-    }
-
-    .top-bar input {
-      flex: 1;
-      padding: 8px;
-      font-size: 16px;
-    }
-
-    .top-bar button {
-      padding: 8px 16px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-
-    .content {
-      flex: 1;
-      display: flex;
-    }
-
-    .left {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      background: #111;
-      padding: 10px;
-      box-sizing: border-box;
-      gap: 10px;
-    }
-
-    .video-section {
-      flex: 2;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    #player {
-      flex: 1;
-    }
-
-    .control-bar {
-      display: flex;
-      gap: 10px;
-    }
-
-    .time-section {
-      flex: 1;
-      background: #222;
-      color: white;
-      padding: 10px;
-      overflow-y: auto;
-      font-size: 14px;
-      border-radius: 6px;
-    }
-
-    .time-item {
-      cursor: pointer;
-      margin-bottom: 6px;
-    }
-
-    .time-item:hover {
-      text-decoration: underline;
-    }
-
-    .right {
-      flex: 1;
-      border-left: 1px solid #ccc;
-      background: #fafafa;
-      padding: 10px;
-      box-sizing: border-box;
-    }
-
-    .right textarea {
-      width: 100%;
-      height: 100%;
-      resize: none;
-      font-size: 16px;
-      padding: 10px;
-      box-sizing: border-box;
-    }
+    body { margin:0; font-family:Arial,sans-serif; display:flex; flex-direction:column; height:100vh; }
+    .top-bar { padding:10px; background:#f4f4f4; display:flex; gap:10px; }
+    .top-bar input { flex:1; padding:8px; font-size:16px; }
+    .top-bar button { padding:8px 16px; font-size:16px; cursor:pointer; }
+    .content { flex:1; display:flex; }
+    .left { flex:1; display:flex; flex-direction:column; background:#111; padding:10px; box-sizing:border-box; gap:10px; }
+    .video-section { flex:2; display:flex; flex-direction:column; gap:8px; }
+    #player { flex:1; }
+    .control-bar { display:flex; gap:10px; }
+    .time-section { flex:1; background:#222; color:white; padding:10px; overflow-y:auto; font-size:14px; border-radius:6px; }
+    .time-item { cursor:pointer; margin-bottom:6px; }
+    .time-item:hover { text-decoration:underline; }
+    .right { flex:1; border-left:1px solid #ccc; background:#fafafa; padding:10px; box-sizing:border-box; }
+    .right textarea { width:100%; height:100%; resize:none; font-size:14px; padding:10px; box-sizing:border-box; }
   </style>
 </head>
 <body>
@@ -116,19 +37,18 @@
           <button onclick="clearLog()">清除紀錄</button>
         </div>
       </div>
-      <div class="time-section" id="timeLog">
-        播放時間紀錄：<br />
-      </div>
+      <div class="time-section" id="timeLog">播放時間紀錄：<br /></div>
     </div>
 
     <div class="right">
-      <textarea placeholder="在這裡寫筆記..."></textarea>
+      <textarea id="subtitleArea" placeholder="字幕將顯示在這裡..."></textarea>
     </div>
   </div>
 
   <script src="https://www.youtube.com/iframe_api"></script>
   <script>
     let player;
+    let currentVideoId = null;
 
     function extractVideoId(url) {
       const regExp = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&\n?#]+)/;
@@ -141,35 +61,45 @@
         height: '100%',
         width: '100%',
         videoId: '',
-        playerVars: {
-          rel: 0,
-          modestbranding: 1
-        }
+        playerVars: { rel:0, modestbranding:1 }
       });
     }
 
     function loadVideo() {
       const url = document.getElementById('youtubeUrl').value.trim();
       const videoId = extractVideoId(url);
+      if (!videoId) { alert('請輸入有效的 YouTube 網址'); return; }
 
-      if (videoId) {
-        player.loadVideoById(videoId);
-      } else {
-        alert('請輸入有效的 YouTube 網址');
+      currentVideoId = videoId;
+      player.loadVideoById(videoId);
+      loadSubtitles(videoId);
+    }
+
+    async function loadSubtitles(videoId) {
+      const textarea = document.getElementById('subtitleArea');
+      textarea.value = "正在載入字幕...";
+
+      try {
+        // 使用公開 transcript API（適用 GitHub Pages）
+        const response = await fetch(`https://youtubetranscript.com/?format=json&video_id=${videoId}`);
+        if (!response.ok) throw new Error('無法取得字幕');
+
+        const data = await response.json();
+        const transcript = data.map(item => item.text).join("\n");
+        textarea.value = transcript;
+      } catch (err) {
+        textarea.value = "⚠ 無法載入字幕。\n可能原因：\n1. 該影片沒有公開字幕\n2. 影片禁止外部讀取字幕\n3. API 暫時不可用";
       }
     }
 
     function recordTime() {
       if (!player || !player.getCurrentTime) return;
-
       const seconds = Math.floor(player.getCurrentTime());
       const formatted = formatTime(seconds);
-
       const div = document.createElement('div');
       div.className = 'time-item';
       div.textContent = formatted;
       div.onclick = () => player.seekTo(seconds, true);
-
       document.getElementById('timeLog').appendChild(div);
     }
 
@@ -180,7 +110,7 @@
     function formatTime(seconds) {
       const min = Math.floor(seconds / 60);
       const sec = seconds % 60;
-      return `${min}:${sec.toString().padStart(2, '0')}`;
+      return `${min}:${sec.toString().padStart(2,'0')}`;
     }
   </script>
 
