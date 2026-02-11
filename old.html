@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音檔播放與文字顯示</title>
+    <style>
+        body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; background: #f4f4f9; }
+        
+        /* 左側音檔區 */
+        .left-panel { flex: 4; padding: 20px; border-right: 2px solid #ddd; overflow-y: auto; background: #fff; }
+        .audio-item { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .audio-item h3 { margin-top: 0; color: #333; }
+        audio { width: 100%; margin-top: 10px; }
+
+        /* 右側文字區 */
+        .right-panel { flex: 6; padding: 30px; overflow-y: auto; line-height: 1.8; color: #444; background: #fff; }
+        .content-box { white-space: pre-wrap; font-size: 1.1rem; border: 1px dashed #ccc; padding: 20px; border-radius: 5px; }
+        h2 { border-left: 5px solid #007bff; padding-left: 10px; }
+    </style>
+</head>
+<body>
+
+    <!-- 左邊區塊：音檔播放 -->
+    <div class="left-panel">
+        <h2>音軌清單</h2>
+        <div id="audio-list">
+            <!-- JS 將在此插入音檔項目 -->
+        </div>
+    </div>
+
+    <!-- 右邊區塊：文字內容 -->
+    <div class="right-panel">
+        <h2>文案/說明內容</h2>
+        <div id="text-content" class="content-box">載入中...</div>
+    </div>
+    <script src="content.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

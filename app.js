@@ -1,6 +1,6 @@
 // 1. 定義資料
 const playlist = [
-    { title: "第一個音檔", url: "Broadway.mp3" },
+    { title: "第一個音檔", url: "Der Kleine Prinz.mp3" },
     { title: "第二個音檔", url: "Audio1.mp3" }
 ];
 

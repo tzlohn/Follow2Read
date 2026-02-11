@@ -1,40 +1,188 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>音檔播放與文字顯示</title>
-    <style>
-        body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; display: flex; height: 100vh; background: #f4f4f9; }
-        
-        /* 左側音檔區 */
-        .left-panel { flex: 4; padding: 20px; border-right: 2px solid #ddd; overflow-y: auto; background: #fff; }
-        .audio-item { margin-bottom: 25px; padding: 15px; background: #f9f9f9; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .audio-item h3 { margin-top: 0; color: #333; }
-        audio { width: 100%; margin-top: 10px; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube 筆記播放器</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
 
-        /* 右側文字區 */
-        .right-panel { flex: 6; padding: 30px; overflow-y: auto; line-height: 1.8; color: #444; background: #fff; }
-        .content-box { white-space: pre-wrap; font-size: 1.1rem; border: 1px dashed #ccc; padding: 20px; border-radius: 5px; }
-        h2 { border-left: 5px solid #007bff; padding-left: 10px; }
-    </style>
+    .top-bar {
+      padding: 10px;
+      background: #f4f4f4;
+      display: flex;
+      gap: 10px;
+    }
+
+    .top-bar input {
+      flex: 1;
+      padding: 8px;
+      font-size: 16px;
+    }
+
+    .top-bar button {
+      padding: 8px 16px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    .content {
+      flex: 1;
+      display: flex;
+    }
+
+    .left {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #111;
+      padding: 10px;
+      box-sizing: border-box;
+      gap: 10px;
+    }
+
+    .video-section {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    #player {
+      flex: 1;
+    }
+
+    .control-bar {
+      display: flex;
+      gap: 10px;
+    }
+
+    .time-section {
+      flex: 1;
+      background: #222;
+      color: white;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 14px;
+      border-radius: 6px;
+    }
+
+    .time-item {
+      cursor: pointer;
+      margin-bottom: 6px;
+    }
+
+    .time-item:hover {
+      text-decoration: underline;
+    }
+
+    .right {
+      flex: 1;
+      border-left: 1px solid #ccc;
+      background: #fafafa;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .right textarea {
+      width: 100%;
+      height: 100%;
+      resize: none;
+      font-size: 16px;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+  </style>
 </head>
 <body>
 
-    <!-- 左邊區塊：音檔播放 -->
-    <div class="left-panel">
-        <h2>音軌清單</h2>
-        <div id="audio-list">
-            <!-- JS 將在此插入音檔項目 -->
+  <div class="top-bar">
+    <input type="text" id="youtubeUrl" placeholder="貼上 YouTube 影片網址" />
+    <button onclick="loadVideo()">播放</button>
+  </div>
+
+  <div class="content">
+    <div class="left">
+      <div class="video-section">
+        <div id="player"></div>
+        <div class="control-bar">
+          <button onclick="recordTime()">記錄目前時間</button>
+          <button onclick="clearLog()">清除紀錄</button>
         </div>
+      </div>
+      <div class="time-section" id="timeLog">
+        播放時間紀錄：<br />
+      </div>
     </div>
 
-    <!-- 右邊區塊：文字內容 -->
-    <div class="right-panel">
-        <h2>文案/說明內容</h2>
-        <div id="text-content" class="content-box">載入中...</div>
+    <div class="right">
+      <textarea placeholder="在這裡寫筆記..."></textarea>
     </div>
-    <script src="content.js"></script>
-    <script src="app.js"></script>
+  </div>
+
+  <script src="https://www.youtube.com/iframe_api"></script>
+  <script>
+    let player;
+
+    function extractVideoId(url) {
+      const regExp = /(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&\n?#]+)/;
+      const match = url.match(regExp);
+      return match ? match[1] : null;
+    }
+
+    function onYouTubeIframeAPIReady() {
+      player = new YT.Player('player', {
+        height: '100%',
+        width: '100%',
+        videoId: '',
+        playerVars: {
+          rel: 0,
+          modestbranding: 1
+        }
+      });
+    }
+
+    function loadVideo() {
+      const url = document.getElementById('youtubeUrl').value.trim();
+      const videoId = extractVideoId(url);
+
+      if (videoId) {
+        player.loadVideoById(videoId);
+      } else {
+        alert('請輸入有效的 YouTube 網址');
+      }
+    }
+
+    function recordTime() {
+      if (!player || !player.getCurrentTime) return;
+
+      const seconds = Math.floor(player.getCurrentTime());
+      const formatted = formatTime(seconds);
+
+      const div = document.createElement('div');
+      div.className = 'time-item';
+      div.textContent = formatted;
+      div.onclick = () => player.seekTo(seconds, true);
+
+      document.getElementById('timeLog').appendChild(div);
+    }
+
+    function clearLog() {
+      document.getElementById('timeLog').innerHTML = '播放時間紀錄：<br />';
+    }
+
+    function formatTime(seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = seconds % 60;
+      return `${min}:${sec.toString().padStart(2, '0')}`;
+    }
+  </script>
+
 </body>
 </html>
