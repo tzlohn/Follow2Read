@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP3 Player</title>
+  <title>MP3 Player (JSON Version)</title>
   <style>
     body {
       margin: 0;
@@ -38,13 +38,12 @@
   <div class="container">
     <div class="left">
       <h2>Select MP3</h2>
+
       <select id="mp3Select">
-        <option value="">-- Loading files... --</option>
+        <option>Loading...</option>
       </select>
 
-      <audio id="audioPlayer" controls>
-        Your browser does not support the audio element.
-      </audio>
+      <audio id="audioPlayer" controls></audio>
     </div>
 
     <div class="right">
@@ -57,35 +56,50 @@
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
 
-    // Fetch MP3 list from server
     async function loadMP3List() {
       try {
-        const response = await fetch('mp3-list.json');
+        const response = await fetch('./mp3-list.json');
+
+        if (!response.ok) {
+          throw new Error('HTTP error ' + response.status);
+        }
+
         const files = await response.json();
 
-        select.innerHTML = '<option value="">-- Choose a file --</option>';
+        // 清空選單
+        select.innerHTML = '';
 
+        // 預設選項
+        const defaultOption = document.createElement('option');
+        defaultOption.textContent = '-- Choose a file --';
+        defaultOption.value = '';
+        select.appendChild(defaultOption);
+
+        // 加入 mp3
         files.forEach(file => {
           const option = document.createElement('option');
-          option.value = 'audio/' + file;
-          option.textContent = file;
+          option.value = './audio/' + file;
+          option.textContent = file.replace('.mp3', '').replace(/_/g, ' ');
           select.appendChild(option);
         });
-      } catch (err) {
-        select.innerHTML = '<option>Error loading files</option>';
-        console.error(err);
+
+      } catch (error) {
+        console.error('❌ JSON loading error:', error);
+        select.innerHTML = '<option>❌ Failed to load mp3-list.json</option>';
       }
     }
 
-    select.addEventListener('change', function() {
-      const selectedFile = this.value;
-      if (selectedFile) {
-        player.src = selectedFile;
+    // 選擇後播放
+    select.addEventListener('change', function () {
+      const file = this.value;
+      if (file) {
+        player.src = file;
         player.load();
         player.play();
       }
     });
 
+    // 初始化
     loadMP3List();
   </script>
 </body>
