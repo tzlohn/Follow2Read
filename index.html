@@ -33,7 +33,7 @@
       <button id="markBtn">📍 在這邊斷句</button>
 
       <!-- 顯示時間點 -->
-      <h3>斷句回放時間點(點擊可直接回放)</h3>
+      <h3>斷句時間清單 (點擊可直接回放)</h3>
       <ul id="bookmarkList"></ul>
     </div>
 
@@ -46,6 +46,9 @@
   <script>
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
+
+    // 預設音量 30%
+    player.volume = 0.3;
     const markBtn = document.getElementById('markBtn');
     const bookmarkList = document.getElementById('bookmarkList');
 
