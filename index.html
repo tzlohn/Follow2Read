@@ -3,35 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>MP3 Player (JSON Version)</title>
+  <title>MP3 Player (JSON + Bookmarks)</title>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      height: 100vh;
-      display: flex;
-    }
-    .container {
-      display: flex;
-      width: 100%;
-    }
-    .left, .right {
-      flex: 1;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .left {
-      border-right: 1px solid #ccc;
-    }
-    select {
-      width: 100%;
-      padding: 10px;
-      font-size: 16px;
-      margin-bottom: 20px;
-    }
-    audio {
-      width: 100%;
-    }
+    body { margin: 0; font-family: Arial, sans-serif; height: 100vh; display: flex; }
+    .container { display: flex; width: 100%; }
+    .left, .right { flex: 1; padding: 20px; box-sizing: border-box; }
+    .left { border-right: 1px solid #ccc; }
+    select { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 12px; }
+    audio { width: 100%; margin-bottom: 12px; }
+    button { padding: 8px 12px; cursor: pointer; }
+    ul { padding-left: 18px; }
+    li { cursor: pointer; margin: 6px 0; }
+    li:hover { text-decoration: underline; }
+    .time { font-family: monospace; }
   </style>
 </head>
 <body>
@@ -44,6 +28,13 @@
       </select>
 
       <audio id="audioPlayer" controls></audio>
+
+      <!-- 新增按鈕 -->
+      <button id="markBtn">📍 記錄目前時間</button>
+
+      <!-- 顯示時間點 -->
+      <h3>Bookmarks</h3>
+      <ul id="bookmarkList"></ul>
     </div>
 
     <div class="right">
@@ -55,27 +46,24 @@
   <script>
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
+    const markBtn = document.getElementById('markBtn');
+    const bookmarkList = document.getElementById('bookmarkList');
 
+    // 載入 mp3 清單
     async function loadMP3List() {
       try {
         const response = await fetch('./mp3-list.json');
-
-        if (!response.ok) {
-          throw new Error('HTTP error ' + response.status);
-        }
+        if (!response.ok) throw new Error('HTTP error ' + response.status);
 
         const files = await response.json();
 
-        // 清空選單
         select.innerHTML = '';
 
-        // 預設選項
         const defaultOption = document.createElement('option');
         defaultOption.textContent = '-- Choose a file --';
         defaultOption.value = '';
         select.appendChild(defaultOption);
 
-        // 加入 mp3
         files.forEach(file => {
           const option = document.createElement('option');
           option.value = './audio/' + file;
@@ -89,14 +77,40 @@
       }
     }
 
-    // 選擇後播放
+    // 播放選擇的音樂
     select.addEventListener('change', function () {
       const file = this.value;
       if (file) {
         player.src = file;
         player.load();
         player.play();
+
+        // 清空 bookmarks（每首歌重新開始）
+        bookmarkList.innerHTML = '';
       }
+    });
+
+    // 格式化時間（秒 → mm:ss）
+    function formatTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = Math.floor(seconds % 60);
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+
+    // 點擊按鈕記錄時間
+    markBtn.addEventListener('click', () => {
+      const time = player.currentTime;
+
+      const li = document.createElement('li');
+      li.innerHTML = `⏱ <span class="time">${formatTime(time)}</span>`;
+
+      // 點擊跳回該時間
+      li.addEventListener('click', () => {
+        player.currentTime = time;
+        player.play();
+      });
+
+      bookmarkList.appendChild(li);
     });
 
     // 初始化
