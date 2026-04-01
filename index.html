@@ -60,7 +60,7 @@
     // Fetch MP3 list from server
     async function loadMP3List() {
       try {
-        const response = await fetch('/list-mp3');
+        const response = await fetch('mp3-list.json');
         const files = await response.json();
 
         select.innerHTML = '<option value="">-- Choose a file --</option>';
