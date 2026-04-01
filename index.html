@@ -39,10 +39,7 @@
     <div class="left">
       <h2>Select MP3</h2>
       <select id="mp3Select">
-        <option value="">-- Choose a file --</option>
-        <option value="audio/song1.mp3">Song 1</option>
-        <option value="audio/song2.mp3">Song 2</option>
-        <option value="audio/song3.mp3">Song 3</option>
+        <option value="">-- Loading files... --</option>
       </select>
 
       <audio id="audioPlayer" controls>
@@ -60,6 +57,26 @@
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
 
+    // Fetch MP3 list from server
+    async function loadMP3List() {
+      try {
+        const response = await fetch('/list-mp3');
+        const files = await response.json();
+
+        select.innerHTML = '<option value="">-- Choose a file --</option>';
+
+        files.forEach(file => {
+          const option = document.createElement('option');
+          option.value = 'audio/' + file;
+          option.textContent = file;
+          select.appendChild(option);
+        });
+      } catch (err) {
+        select.innerHTML = '<option>Error loading files</option>';
+        console.error(err);
+      }
+    }
+
     select.addEventListener('change', function() {
       const selectedFile = this.value;
       if (selectedFile) {
@@ -68,6 +85,8 @@
         player.play();
       }
     });
+
+    loadMP3List();
   </script>
 </body>
 </html>
