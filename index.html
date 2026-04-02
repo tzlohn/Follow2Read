@@ -63,6 +63,7 @@
 
   </div>
 
+  <script src="https://unpkg.com/lamejs@1.2.0/lame.min.js"></script>
   <script>
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
@@ -75,6 +76,14 @@
 
     player.volume = 0.3;
 
+    function convertFloatToInt16(buffer) {
+      let l = buffer.length;
+      let buf = new Int16Array(l);
+      while (l--) {
+        buf[l] = Math.min(1, buffer[l]) * 0x7fff;
+      }
+      return buf;
+    }
     // 載入 mp3
     async function loadMP3List() {
       try {
@@ -140,8 +149,8 @@
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
 
       mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
+        //const blob = new Blob(chunks, { type: 'audio/webm' });
+        //const url = URL.createObjectURL(blob);
 
         const li = document.createElement('li');
 
@@ -155,7 +164,7 @@
         downloadBtn.onclick = () => {
           const a = document.createElement('a');
           a.href = url;
-          a.download = `recording_${Date.now()}.webm`;
+          a.download = `recording_${Date.now()}.mp3`;
           a.click();
         };
 
