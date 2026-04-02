@@ -63,6 +63,7 @@
 
   </div>
 
+  <script src="https://unpkg.com/lamejs@1.2.0/lame.min.js"></script>
   <script>
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
@@ -147,9 +148,31 @@
 
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
 
-      mediaRecorder.onstop = () => {
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-        const url = URL.createObjectURL(blob);
+      mediaRecorder.onstop = async () => {
+        //const blob = new Blob(chunks, { type: 'audio/webm' });
+        //const url = URL.createObjectURL(blob);
+        const blob = new Blob(chunks);
+        const arrayBuffer = await blob.arrayBuffer();
+        const audioContext = new AudioContext();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+        const samples = audioBuffer.getChannelData(0); // 單聲道
+        const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
+
+        let mp3Data = [];
+        const sampleBlockSize = 1152;
+
+        for (let i = 0; i < samples.length; i += sampleBlockSize) {
+          const sampleChunk = samples.subarray(i, i + sampleBlockSize);
+          const mp3buf = mp3encoder.encodeBuffer(convertFloatToInt16(sampleChunk));
+          if (mp3buf.length > 0) mp3Data.push(mp3buf);
+        }
+
+        const mp3buf = mp3encoder.flush();
+        if (mp3buf.length > 0) mp3Data.push(mp3buf);
+
+        const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
+        const url = URL.createObjectURL(mp3Blob);
 
         const li = document.createElement('li');
 
