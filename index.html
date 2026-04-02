@@ -24,10 +24,8 @@
 <body>
   <div class="container">
 
-    <!-- 左邊分成上下 -->
     <div class="left">
 
-      <!-- 上半：原本播放器 -->
       <div class="left-top">
         <h2>選擇音檔</h2>
 
@@ -43,7 +41,6 @@
         <ul id="bookmarkList"></ul>
       </div>
 
-      <!-- 下半：錄音功能 -->
       <div class="left-bottom">
         <h2>Recorder</h2>
 
@@ -84,7 +81,7 @@
       }
       return buf;
     }
-    // 載入 mp3
+
     async function loadMP3List() {
       try {
         const response = await fetch('./mp3-list.json');
@@ -136,7 +133,6 @@
       bookmarkList.appendChild(li);
     });
 
-    // ===== 錄音功能 =====
     let mediaRecorder;
     let chunks = [];
 
@@ -149,14 +145,18 @@
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
 
       mediaRecorder.onstop = async () => {
-        //const blob = new Blob(chunks, { type: 'audio/webm' });
-        //const url = URL.createObjectURL(blob);
         const blob = new Blob(chunks);
         const arrayBuffer = await blob.arrayBuffer();
-        const audioContext = new AudioContext();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
 
-        const samples = audioBuffer.getChannelData(0); // 單聲道
+        // ✅ 改良 AudioContext（相容 + resume）
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        await audioContext.resume();
+
+        const audioBuffer = await new Promise((resolve, reject) => {
+          audioContext.decodeAudioData(arrayBuffer, resolve, reject);
+        });
+
+        const samples = audioBuffer.getChannelData(0);
         const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
 
         let mp3Data = [];
@@ -180,19 +180,30 @@
         audio.controls = true;
         audio.src = url;
 
-        // Download 按鈕
         const downloadBtn = document.createElement('button');
-        downloadBtn.textContent = '⬇ Download';
+        downloadBtn.textContent = '⬇ Download MP3';
         downloadBtn.onclick = () => {
           const a = document.createElement('a');
           a.href = url;
-          a.download = `recording_${Date.now()}.webm`;
+          a.download = `recording_${Date.now()}.mp3`; // ✅ 修正副檔名
           a.click();
         };
 
         li.appendChild(audio);
         li.appendChild(document.createElement('br'));
         li.appendChild(downloadBtn);
+
+        // ❌ 刪除按鈕
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '🗑 Delete';
+        deleteBtn.onclick = () => {
+          if (confirm('確定要刪除這段錄音嗎？')) {
+            URL.revokeObjectURL(url); // 釋放記憶體
+            li.remove();
+          }
+        };
+
+        li.appendChild(deleteBtn);
 
         recordList.appendChild(li);
       };
