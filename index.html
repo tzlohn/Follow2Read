@@ -8,14 +8,17 @@
     body { margin: 0; font-family: Arial, sans-serif; height: 100vh; display: flex; }
     .container { display: flex; width: 100%; }
 
-    .left, .right { flex: 1; display: flex; flex-direction: column; }
-    .left { border-right: 1px solid #ccc; }
+    /* 左右比例 3:7 */
+    .left { flex: 3; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+    .right { flex: 7; display: flex; flex-direction: column; }
 
     .left-top { flex: 7; padding: 16px; }
     .left-bottom { flex: 3; padding: 16px; border-top: 1px solid #ccc; }
 
-    .right-top { flex: 3; padding: 16px; }
-    .right-bottom { flex: 7; padding: 16px; border-top: 1px solid #ccc; }
+    /* 右邊三段 */
+    .right-top { flex: 6; padding: 16px; border-bottom: 1px solid #ccc; }
+    .right-middle { flex: 2; padding: 16px; border-bottom: 1px solid #ccc; }
+    .right-bottom { flex: 2; padding: 16px; }
 
     select { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 12px; }
     audio { width: 100%; margin-bottom: 12px; }
@@ -25,7 +28,11 @@
     li:hover { text-decoration: underline; }
     .time { font-family: monospace; }
 
-    textarea { width: 100%; height: 80px; padding: 8px; }
+    textarea { width: 100%; padding: 8px; }
+
+    iframe { width: 100%; height: 100%; border: none; }
+
+    #pdfViewer { width: 100%; height: 100%; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -59,16 +66,19 @@
     <!-- 右邊 -->
     <div class="right">
 
+      <!-- PDF 上傳 + 顯示 -->
       <div class="right-top">
-        <h2>Notes / Workspace</h2>
-        <p>你可以在這裡放筆記或歌詞</p>
+        <h2>PDF Viewer</h2>
+        <input type="file" id="pdfUpload" accept="application/pdf">
+        <br><br>
+        <iframe id="pdfViewer"></iframe>
       </div>
 
-      <!-- 🔥 多字典搜尋工具 -->
-      <div class="right-bottom">
+      <!-- 字典 -->
+      <div class="right-middle">
         <h2>Dictionary Tool</h2>
 
-        <textarea id="dictInput" placeholder="輸入德文或句子..."></textarea>
+        <textarea id="dictInput" placeholder="輸入德文或句子..." style="height:60px;"></textarea>
 
         <br><br>
 
@@ -76,7 +86,12 @@
         <button onclick="searchLEO()">LEO</button>
         <button onclick="searchDuden()">Duden</button>
         <button onclick="searchDeepL()">DeepL</button>
+      </div>
 
+      <!-- 筆記 -->
+      <div class="right-bottom">
+        <h2>Notes</h2>
+        <textarea id="notesArea" placeholder="在這裡寫筆記..." style="height:100%;"></textarea>
       </div>
 
     </div>
@@ -155,7 +170,7 @@
       bookmarkList.appendChild(li);
     });
 
-    // ===== 錄音 =====
+    // 錄音
     let mediaRecorder;
     let chunks = [];
 
@@ -211,7 +226,16 @@
       stopRec.disabled = true;
     };
 
-    // ===== 字典功能 =====
+    // PDF 上傳
+    document.getElementById('pdfUpload').addEventListener('change', function () {
+      const file = this.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        document.getElementById('pdfViewer').src = url;
+      }
+    });
+
+    // 字典
     function getWord() {
       return document.getElementById('dictInput').value.trim();
     }
