@@ -69,8 +69,9 @@
       <!-- PDF 上傳 + 顯示 -->
       <div class="right-top">
         <h2>PDF Viewer</h2>
-        <input type="file" id="pdfUpload" accept="application/pdf">
-        <br><br>
+        <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+          <input type="file" id="pdfUpload" accept="application/pdf">
+        </div>
         <iframe id="pdfViewer"></iframe>
       </div>
 
@@ -240,22 +241,26 @@
       return document.getElementById('dictInput').value.trim();
     }
 
+    function openDictWindow(url) {
+      window.open(url, 'dictWindow', 'width=900,height=700');
+    }
+
     function searchLEO() {
       const word = getWord();
       if (!word) return;
-      window.open(`https://dict.leo.org/german-english/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
+      openDictWindow(`https://dict.leo.org/german-english/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
     function searchDuden() {
       const word = getWord();
       if (!word) return;
-      window.open(`https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
+      openDictWindow(`https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
     function searchDeepL() {
       const word = getWord();
       if (!word) return;
-      window.open(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
+      openDictWindow(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
     function searchAll() {
