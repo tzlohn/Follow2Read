@@ -9,8 +9,8 @@
     .container { display: flex; width: 100%; }
 
     /* 左右比例 3:7 */
-    .left { flex: 3; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
-    .right { flex: 7; display: flex; flex-direction: column; }
+    .left { flex: 4; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+    .right { flex: 6; display: flex; flex-direction: column; }
 
     .left-top { flex: 7; padding: 16px; }
     .left-bottom { flex: 3; padding: 16px; border-top: 1px solid #ccc; }
@@ -243,19 +243,19 @@
     function searchLEO() {
       const word = getWord();
       if (!word) return;
-      window.open(`https://dict.leo.org/german-english/${encodeURIComponent(word)}`, '_blank');
+      window.open(`https://dict.leo.org/german-english/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
     function searchDuden() {
       const word = getWord();
       if (!word) return;
-      window.open(`https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`, '_blank');
+      window.open(`https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
     function searchDeepL() {
       const word = getWord();
       if (!word) return;
-      window.open(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank');
+      window.open(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
     function searchAll() {
