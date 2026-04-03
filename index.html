@@ -15,17 +15,17 @@
     .left-bottom { flex: 3; padding: 16px; border-top: 1px solid #ccc; }
 
     .right-top { flex: 3; padding: 16px; }
-    .right-bottom { flex: 7; border-top: 1px solid #ccc; }
+    .right-bottom { flex: 7; padding: 16px; border-top: 1px solid #ccc; }
 
     select { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 12px; }
     audio { width: 100%; margin-bottom: 12px; }
-    button { padding: 8px 12px; cursor: pointer; margin-right: 8px; }
+    button { padding: 8px 12px; cursor: pointer; margin: 4px 4px 4px 0; }
     ul { padding-left: 18px; }
     li { cursor: pointer; margin: 6px 0; }
     li:hover { text-decoration: underline; }
     .time { font-family: monospace; }
 
-    iframe { width: 100%; height: 100%; border: none; }
+    textarea { width: 100%; height: 80px; padding: 8px; }
   </style>
 </head>
 <body>
@@ -64,9 +64,19 @@
         <p>你可以在這裡放筆記或歌詞</p>
       </div>
 
+      <!-- 🔥 多字典搜尋工具 -->
       <div class="right-bottom">
-        <!-- 嵌入字典 -->
-        <iframe src="https://dict.leo.org"></iframe>
+        <h2>Dictionary Tool</h2>
+
+        <textarea id="dictInput" placeholder="輸入德文或句子..."></textarea>
+
+        <br><br>
+
+        <button onclick="searchAll()">🔍 查全部</button>
+        <button onclick="searchLEO()">LEO</button>
+        <button onclick="searchDuden()">Duden</button>
+        <button onclick="searchDeepL()">DeepL</button>
+
       </div>
 
     </div>
@@ -145,6 +155,7 @@
       bookmarkList.appendChild(li);
     });
 
+    // ===== 錄音 =====
     let mediaRecorder;
     let chunks = [];
 
@@ -199,6 +210,35 @@
       startRec.disabled = false;
       stopRec.disabled = true;
     };
+
+    // ===== 字典功能 =====
+    function getWord() {
+      return document.getElementById('dictInput').value.trim();
+    }
+
+    function searchLEO() {
+      const word = getWord();
+      if (!word) return;
+      window.open(`https://dict.leo.org/german-english/${encodeURIComponent(word)}`, '_blank');
+    }
+
+    function searchDuden() {
+      const word = getWord();
+      if (!word) return;
+      window.open(`https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`, '_blank');
+    }
+
+    function searchDeepL() {
+      const word = getWord();
+      if (!word) return;
+      window.open(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank');
+    }
+
+    function searchAll() {
+      searchLEO();
+      searchDuden();
+      searchDeepL();
+    }
 
     loadMP3List();
   </script>
