@@ -7,11 +7,16 @@
   <style>
     body { margin: 0; font-family: Arial, sans-serif; height: 100vh; display: flex; }
     .container { display: flex; width: 100%; }
-    .left { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
-    .left-top, .left-bottom { padding: 16px; box-sizing: border-box; }
-    .left-top { flex: 7; }
-    .left-bottom { flex: 3; border-top: 1px solid #ccc; }
-    .right { flex: 1; padding: 20px; }
+
+    .left, .right { flex: 1; display: flex; flex-direction: column; }
+    .left { border-right: 1px solid #ccc; }
+
+    .left-top { flex: 7; padding: 16px; }
+    .left-bottom { flex: 3; padding: 16px; border-top: 1px solid #ccc; }
+
+    .right-top { flex: 3; padding: 16px; }
+    .right-bottom { flex: 7; border-top: 1px solid #ccc; }
+
     select { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 12px; }
     audio { width: 100%; margin-bottom: 12px; }
     button { padding: 8px 12px; cursor: pointer; margin-right: 8px; }
@@ -19,32 +24,30 @@
     li { cursor: pointer; margin: 6px 0; }
     li:hover { text-decoration: underline; }
     .time { font-family: monospace; }
+
+    iframe { width: 100%; height: 100%; border: none; }
   </style>
 </head>
 <body>
   <div class="container">
 
+    <!-- 左邊 -->
     <div class="left">
 
       <div class="left-top">
         <h2>選擇音檔</h2>
-
-        <select id="mp3Select">
-          <option>Loading...</option>
-        </select>
-
+        <select id="mp3Select"><option>Loading...</option></select>
         <audio id="audioPlayer" controls></audio>
 
         <button id="markBtn">按此紀錄斷句時間</button>
 
-        <h3>斷句時間清單 (點擊可直接回放)</h3>
+        <h3>斷句時間清單</h3>
         <ul id="bookmarkList"></ul>
       </div>
 
       <div class="left-bottom">
         <h2>Recorder</h2>
-
-        <button id="startRec">🎙 Start Recording</button>
+        <button id="startRec">🎙 Start</button>
         <button id="stopRec" disabled>⏹ Stop</button>
 
         <h3>Recordings</h3>
@@ -53,9 +56,19 @@
 
     </div>
 
+    <!-- 右邊 -->
     <div class="right">
-      <h2>Right Panel</h2>
-      <p>You can put anything here.</p>
+
+      <div class="right-top">
+        <h2>Notes / Workspace</h2>
+        <p>你可以在這裡放筆記或歌詞</p>
+      </div>
+
+      <div class="right-bottom">
+        <!-- 嵌入字典 -->
+        <iframe src="https://dict.leo.org"></iframe>
+      </div>
+
     </div>
 
   </div>
@@ -88,7 +101,6 @@
         const files = await response.json();
 
         select.innerHTML = '';
-
         const def = document.createElement('option');
         def.textContent = '-- Choose a file --';
         def.value = '';
@@ -109,7 +121,7 @@
     select.addEventListener('change', function () {
       if (this.value) {
         player.src = this.value;
-        player.play();
+        player.load();
         bookmarkList.innerHTML = '';
       }
     });
@@ -141,38 +153,11 @@
       mediaRecorder = new MediaRecorder(stream);
 
       chunks = [];
-
       mediaRecorder.ondataavailable = e => chunks.push(e.data);
 
-      mediaRecorder.onstop = async () => {
-        const blob = new Blob(chunks);
-        const arrayBuffer = await blob.arrayBuffer();
-
-        // ✅ 改良 AudioContext（相容 + resume）
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        await audioContext.resume();
-
-        const audioBuffer = await new Promise((resolve, reject) => {
-          audioContext.decodeAudioData(arrayBuffer, resolve, reject);
-        });
-
-        const samples = audioBuffer.getChannelData(0);
-        const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
-
-        let mp3Data = [];
-        const sampleBlockSize = 1152;
-
-        for (let i = 0; i < samples.length; i += sampleBlockSize) {
-          const sampleChunk = samples.subarray(i, i + sampleBlockSize);
-          const mp3buf = mp3encoder.encodeBuffer(convertFloatToInt16(sampleChunk));
-          if (mp3buf.length > 0) mp3Data.push(mp3buf);
-        }
-
-        const mp3buf = mp3encoder.flush();
-        if (mp3buf.length > 0) mp3Data.push(mp3buf);
-
-        const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
-        const url = URL.createObjectURL(mp3Blob);
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
 
         const li = document.createElement('li');
 
@@ -181,35 +166,30 @@
         audio.src = url;
 
         const downloadBtn = document.createElement('button');
-        downloadBtn.textContent = '⬇ Download MP3';
+        downloadBtn.textContent = '⬇ Download';
         downloadBtn.onclick = () => {
           const a = document.createElement('a');
           a.href = url;
-          a.download = `recording_${Date.now()}.mp3`; // ✅ 修正副檔名
+          a.download = `recording_${Date.now()}.webm`;
           a.click();
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '🗑 Delete';
+        deleteBtn.onclick = () => {
+          URL.revokeObjectURL(url);
+          li.remove();
         };
 
         li.appendChild(audio);
         li.appendChild(document.createElement('br'));
         li.appendChild(downloadBtn);
-
-        // ❌ 刪除按鈕
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = '🗑 Delete';
-        deleteBtn.onclick = () => {
-          if (confirm('確定要刪除這段錄音嗎？')) {
-            URL.revokeObjectURL(url); // 釋放記憶體
-            li.remove();
-          }
-        };
-
         li.appendChild(deleteBtn);
 
         recordList.appendChild(li);
       };
 
       mediaRecorder.start();
-
       startRec.disabled = true;
       stopRec.disabled = false;
     };
