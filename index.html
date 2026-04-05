@@ -8,7 +8,7 @@
     body { margin: 0; font-family: Arial, sans-serif; height: 100vh; display: flex; }
     .container { display: flex; width: 100%; }
 
-    /* 左右比例 4:6 */
+    /* 左右比例 3:7 */
     .left { flex: 4; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
     .right { flex: 6; display: flex; flex-direction: column; }
 
@@ -122,6 +122,89 @@
 
     player.volume = 0.3;
 
+    // ===== 狀態儲存（localStorage + cookie） =====
+    function saveState() {
+      const state = {
+        selectedAudio: player.src,
+        currentTime: player.currentTime,
+        bookmarks: Array.from(document.querySelectorAll('.time')).map(el => el.textContent),
+        notes: document.getElementById('notesArea')?.value || ''
+      };
+
+      localStorage.setItem('appState', JSON.stringify(state));
+      document.cookie = `appState=${encodeURIComponent(JSON.stringify(state))}; path=/; max-age=31536000`;
+    }
+
+    function loadState() {
+      let state = localStorage.getItem('appState');
+
+      if (!state) {
+        const match = document.cookie.match(/appState=([^;]+)/);
+        if (match) state = decodeURIComponent(match[1]);
+      }
+
+      if (!state) return;
+
+      try {
+        state = JSON.parse(state);
+
+        if (state.selectedAudio) {
+          player.src = state.selectedAudio;
+        }
+
+        if (state.currentTime) {
+          player.currentTime = state.currentTime;
+        }
+
+        if (state.notes) {
+          document.getElementById('notesArea').value = state.notes;
+        }
+
+        if (state.bookmarks) {
+          bookmarkContainer.innerHTML = '';
+          bookmarkCount = 0;
+          currentColumn = createNewColumn();
+
+          state.bookmarks.forEach(timeStr => {
+            const [m, s] = timeStr.split(':').map(Number);
+            const t = m * 60 + s;
+
+            if (bookmarkCount % 5 === 0 && bookmarkCount !== 0) {
+              currentColumn = createNewColumn();
+            }
+
+            const li = document.createElement('li');
+
+            const playBtn = document.createElement('button');
+            playBtn.textContent = '▶';
+            playBtn.onclick = () => {
+              player.currentTime = t;
+              player.play();
+            };
+
+            const pauseBtn = document.createElement('button');
+            pauseBtn.textContent = '⏸';
+            pauseBtn.onclick = () => player.pause();
+
+            const span = document.createElement('span');
+            span.className = 'time';
+            span.textContent = timeStr;
+            span.style.margin = '0 8px';
+
+            li.appendChild(playBtn);
+            li.appendChild(pauseBtn);
+            li.appendChild(span);
+
+            currentColumn.appendChild(li);
+            bookmarkCount++;
+          });
+        }
+
+      } catch (e) {
+        console.error('Load state error', e);
+      }
+    }
+
     function convertFloatToInt16(buffer) {
       let l = buffer.length;
       let buf = new Int16Array(l);
@@ -204,6 +287,8 @@
       currentColumn.appendChild(li);
 
       bookmarkCount++;
+
+      setTimeout(saveState, 100);
     });
 
     // 錄音
@@ -257,6 +342,7 @@
     };
 
     stopRec.onclick = () => {
+      setTimeout(saveState, 100);
       mediaRecorder.stop();
       startRec.disabled = false;
       stopRec.disabled = true;
@@ -298,6 +384,10 @@
       openDictWindow(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
     }
 
+    document.getElementById('notesArea').addEventListener('input', saveState);
+
+    player.addEventListener('pause', saveState);
+
     function searchAll() {
       searchLEO();
       searchDuden();
@@ -305,6 +395,7 @@
     }
 
     loadMP3List();
+    loadState();
   </script>
 </body>
 </html>
