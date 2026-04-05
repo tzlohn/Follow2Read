@@ -49,7 +49,7 @@
         <button id="markBtn">按此紀錄斷句時間</button>
 
         <h3>斷句時間清單</h3>
-        <ul id="bookmarkList"></ul>
+        <div id="bookmarkContainer" style="display:flex; gap:20px; flex-wrap:wrap;"></div>
       </div>
 
       <div class="left-bottom">
@@ -104,7 +104,17 @@
     const select = document.getElementById('mp3Select');
     const player = document.getElementById('audioPlayer');
     const markBtn = document.getElementById('markBtn');
-    const bookmarkList = document.getElementById('bookmarkList');
+    const bookmarkContainer = document.getElementById('bookmarkContainer');
+    let bookmarkCount = 0;
+    let currentColumn = createNewColumn();
+
+    function createNewColumn() {
+      const col = document.createElement('ul');
+      col.style.listStyle = 'none';
+      col.style.paddingLeft = '0';
+      bookmarkContainer.appendChild(col);
+      return col;
+    }
 
     const startRec = document.getElementById('startRec');
     const stopRec = document.getElementById('stopRec');
@@ -148,7 +158,9 @@
       if (this.value) {
         player.src = this.value;
         player.load();
-        bookmarkList.innerHTML = '';
+        bookmarkContainer.innerHTML = '';
+        bookmarkCount = 0;
+        currentColumn = createNewColumn();
       }
     });
 
@@ -160,15 +172,38 @@
 
     markBtn.addEventListener('click', () => {
       const t = player.currentTime;
-      const li = document.createElement('li');
-      li.innerHTML = `⏱ <span class="time">${formatTime(t)}</span>`;
 
-      li.onclick = () => {
+      if (bookmarkCount % 5 === 0 && bookmarkCount !== 0) {
+        currentColumn = createNewColumn();
+      }
+
+      const li = document.createElement('li');
+
+      const playBtn = document.createElement('button');
+      playBtn.textContent = '▶';
+      playBtn.onclick = () => {
         player.currentTime = t;
         player.play();
       };
 
-      bookmarkList.appendChild(li);
+      const pauseBtn = document.createElement('button');
+      pauseBtn.textContent = '⏸';
+      pauseBtn.onclick = () => {
+        player.pause();
+      };
+
+      const span = document.createElement('span');
+      span.className = 'time';
+      span.textContent = formatTime(t);
+      span.style.margin = '0 8px';
+
+      li.appendChild(playBtn);
+      li.appendChild(pauseBtn);
+      li.appendChild(span);
+
+      currentColumn.appendChild(li);
+
+      bookmarkCount++;
     });
 
     // 錄音
