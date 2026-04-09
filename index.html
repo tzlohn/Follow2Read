@@ -12,8 +12,8 @@
     .left { flex: 4; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
     .right { flex: 6; display: flex; flex-direction: column; }
 
-    .left-top { flex: 5; padding: 16px; }
-    .left-bottom { flex: 5; padding: 16px; border-top: 1px solid #ccc; }
+    .left-top { flex: 7; padding: 16px; }
+    .left-bottom { flex: 3; padding: 16px; border-top: 1px solid #ccc; }
 
     /* 右邊三段 */
     .right-top { flex: 6; padding: 16px; border-bottom: 1px solid #ccc; }
@@ -75,24 +75,20 @@
         <iframe id="pdfViewer"></iframe>
       </div>
 
-      <!-- 字典 -->
-      <div class="right-middle">
-        <h2>Dictionary Tool</h2>
+      <!-- 🔥 Chat Assistant + Notes 合併 -->
+      <div class="right-middle" style="flex:4; display:flex; flex-direction:column;">
+        <h2>Assistant + Notes</h2>
 
-        <textarea id="dictInput" placeholder="輸入德文或句子..." style="height:60px;"></textarea>
+        <div style="flex:1; border:1px solid #ccc; padding:8px; margin-bottom:8px; overflow:auto;" id="chatBox">
+          <div><b>Assistant:</b> Hello! 請輸入問題，我會幫你查字或解釋 😊</div>
+        </div>
 
-        <br><br>
+        <input type="text" id="chatInput" placeholder="輸入問題或單字..." style="width:100%; padding:8px; margin-bottom:6px;">
 
-        <button onclick="searchAll()">🔍 查全部</button>
-        <button onclick="searchLEO()">LEO</button>
-        <button onclick="searchDuden()">Duden</button>
-        <button onclick="searchDeepL()">DeepL</button>
-      </div>
+        <button onclick="sendMessage()">Send</button>
 
-      <!-- 筆記 -->
-      <div class="right-bottom">
-        <h2>Notes</h2>
-        <textarea id="notesArea" placeholder="在這裡寫筆記..." style="height:100%;"></textarea>
+        <h3>Notes</h3>
+        <textarea id="notesArea" placeholder="在這裡寫筆記..." style="flex:1;"></textarea>
       </div>
 
     </div>
@@ -387,6 +383,24 @@
     document.getElementById('notesArea').addEventListener('input', saveState);
 
     player.addEventListener('pause', saveState);
+
+    function sendMessage() {
+      const input = document.getElementById('chatInput');
+      const chatBox = document.getElementById('chatBox');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const userMsg = document.createElement('div');
+      userMsg.innerHTML = `<b>You:</b> ${text}`;
+      chatBox.appendChild(userMsg);
+
+      const botMsg = document.createElement('div');
+      botMsg.innerHTML = `<b>Assistant:</b> (這裡可串接 ChatGPT API)`;
+      chatBox.appendChild(botMsg);
+
+      chatBox.scrollTop = chatBox.scrollHeight;
+      input.value = '';
+    }
 
     function searchAll() {
       searchLEO();
