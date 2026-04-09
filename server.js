@@ -1,27 +1,38 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
+import express from "express";
+import fetch from "node-fetch";
+import cors from "cors";
 
 const app = express();
-const PORT = 3000;
+app.use(cors());
+app.use(express.json());
 
-// 靜態檔案
-app.use(express.static(__dirname));
+const OPENAI_API_KEY = "你的API_KEY";
 
-// API: 列出 mp3
-app.get('/list-mp3', (req, res) => {
-  const audioDir = path.join(__dirname, 'audio');
+app.post("/chat", async (req, res) => {
+  const userMessage = req.body.message;
 
-  fs.readdir(audioDir, (err, files) => {
-    if (err) {
-      return res.status(500).json({ error: 'Cannot read folder' });
-    }
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "gpt-5.3",
+        messages: [
+          { role: "system", content: "You are a helpful German learning assistant." },
+          { role: "user", content: userMessage }
+        ]
+      })
+    });
 
-    const mp3Files = files.filter(file => file.endsWith('.mp3'));
-    res.json(mp3Files);
-  });
+    const data = await response.json();
+    res.json({ reply: data.choices[0].message.content });
+
+  } catch (err) {
+    res.status(500).json({ error: "API error" });
+  }
 });
 
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
+app.listen(3000, () => console.log("Server running on port 3000"));
