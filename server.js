@@ -1,38 +1,33 @@
 import express from "express";
 import fetch from "node-fetch";
-import cors from "cors";
+import * as cheerio from "cheerio";
 
 const app = express();
-app.use(cors());
-app.use(express.json());
+const PORT = process.env.PORT || 3000;
 
-const OPENAI_API_KEY = "你的API_KEY";
+app.use(express.static("public"));
 
-app.post("/chat", async (req, res) => {
-  const userMessage = req.body.message;
-
+app.get("/api/parse", async (req, res) => {
   try {
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${OPENAI_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        model: "gpt-5.3",
-        messages: [
-          { role: "system", content: "You are a helpful German learning assistant." },
-          { role: "user", content: userMessage }
-        ]
-      })
-    });
+    const url = req.query.url;
 
-    const data = await response.json();
-    res.json({ reply: data.choices[0].message.content });
+    const html = await fetch(url).then(r => r.text());
+    const $ = cheerio.load(html);
 
-  } catch (err) {
-    res.status(500).json({ error: "API error" });
+    const video =
+      $("video source").attr("src") ||
+      $("iframe").attr("src");
+
+    const text =
+      $(".rich-text").text() ||
+      $("article").text();
+
+    res.json({ video, text });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
   }
 });
 
-app.listen(3000, () => console.log("Server running on port 3000"));
+app.listen(PORT, () => {
+  console.log("Server running on", PORT);
+});
