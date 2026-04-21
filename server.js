@@ -18,8 +18,23 @@ app.get("/api/parse", async (req, res) => {
     const $ = cheerio.load(html);
 
     // 🎬 Video extraction (iframe preferred)
-    const iframeSrc = $("iframe").attr("src") || null;
-    const videoSrc = $("video source").attr("src") || null;
+    let iframeSrc = $("iframe").attr("src") || null;
+    let videoSrc = $("video source").attr("src") || null;
+
+    // 🧠 嘗試從 script / JSON 抓影片
+    if (!iframeSrc && !videoSrc) {
+      $("script").each((i, el) => {
+        const content = $(el).html();
+
+        if (content && content.includes("mp4")) {
+          const match = content.match(/https?:\/\/[^\"']+\.mp4/);
+          if (match) {
+            videoSrc = match[0];
+            console.log("Found video in script:", videoSrc);
+          }
+        }
+      });
+    }
 
     // 📄 Text extraction (DW structure fallback)
     let text = $(".rich-text").text();
