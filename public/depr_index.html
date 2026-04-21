@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>聽寫跟讀小夥伴</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; height: 100vh; display: flex; }
+    .container { display: flex; width: 100%; }
+
+    /* 左右比例 3:7 */
+    .left { flex: 4; display: flex; flex-direction: column; border-right: 1px solid #ccc; }
+    .right { flex: 6; display: flex; flex-direction: column; }
+
+    .left-top { flex: 5; padding: 16px; }
+    .left-bottom { flex: 5; padding: 16px; border-top: 1px solid #ccc; }
+
+    /* 右邊三段 */
+    .right-top { flex: 6; padding: 16px; border-bottom: 1px solid #ccc; }
+    .right-middle { flex: 2; padding: 16px; border-bottom: 1px solid #ccc; }
+    .right-bottom { flex: 2; padding: 16px; }
+
+    select { width: 100%; padding: 10px; font-size: 16px; margin-bottom: 12px; }
+    audio { width: 100%; margin-bottom: 12px; }
+    button { padding: 8px 12px; cursor: pointer; margin: 4px 4px 4px 0; }
+    ul { padding-left: 18px; }
+    li { cursor: pointer; margin: 6px 0; }
+    li:hover { text-decoration: underline; }
+    .time { font-family: monospace; }
+
+    textarea { width: 100%; padding: 8px; }
+
+    iframe { width: 100%; height: 100%; border: none; }
+
+    #pdfViewer { width: 100%; height: 100%; border: 1px solid #ccc; }
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- 左邊 -->
+    <div class="left">
+
+      <div class="left-top">
+        <h2>選擇音檔</h2>
+        <select id="mp3Select"><option>Loading...</option></select>
+        <audio id="audioPlayer" controls></audio>
+
+        <button id="markBtn">按此紀錄斷句時間</button>
+
+        <h3>斷句時間清單</h3>
+        <div id="bookmarkContainer" style="display:flex; gap:20px; flex-wrap:wrap;"></div>
+      </div>
+
+      <div class="left-bottom">
+        <h2>Recorder</h2>
+        <button id="startRec">🎙 Start</button>
+        <button id="stopRec" disabled>⏹ Stop</button>
+
+        <h3>Recordings</h3>
+        <ul id="recordList"></ul>
+      </div>
+
+    </div>
+
+    <!-- 右邊 -->
+    <div class="right">
+
+      <!-- PDF 上傳 + 顯示 -->
+      <div class="right-top">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+          <h2 style="margin:0;">PDF Viewer</h2>
+          <input type="file" id="pdfUpload" accept="application/pdf">
+        </div>
+        <iframe id="pdfViewer"></iframe>
+      </div>
+
+      <!-- 字典 -->
+      <div class="right-middle">
+        <h2>Dictionary Tool</h2>
+
+        <textarea id="dictInput" placeholder="輸入德文或句子..." style="height:60px;"></textarea>
+
+        <br><br>
+
+        <button onclick="searchAll()">🔍 查全部</button>
+        <button onclick="searchLEO()">LEO</button>
+        <button onclick="searchDuden()">Duden</button>
+        <button onclick="searchDeepL()">DeepL</button>
+      </div>
+
+      <!-- 筆記 -->
+      <div class="right-bottom">
+        <h2>Notes</h2>
+        <textarea id="notesArea" placeholder="在這裡寫筆記..." style="height:100%;"></textarea>
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="https://unpkg.com/lamejs@1.2.0/lame.min.js"></script>
+  <script>
+    const select = document.getElementById('mp3Select');
+    const player = document.getElementById('audioPlayer');
+    const markBtn = document.getElementById('markBtn');
+    const bookmarkContainer = document.getElementById('bookmarkContainer');
+    let bookmarkCount = 0;
+    let currentColumn = createNewColumn();
+
+    function createNewColumn() {
+      const col = document.createElement('ul');
+      col.style.listStyle = 'none';
+      col.style.paddingLeft = '0';
+      bookmarkContainer.appendChild(col);
+      return col;
+    }
+
+    const startRec = document.getElementById('startRec');
+    const stopRec = document.getElementById('stopRec');
+    const recordList = document.getElementById('recordList');
+
+    player.volume = 0.3;
+
+    // ===== 狀態儲存（localStorage + cookie） =====
+    function saveState() {
+      const state = {
+        selectedAudio: player.src,
+        currentTime: player.currentTime,
+        bookmarks: Array.from(document.querySelectorAll('.time')).map(el => el.textContent),
+        notes: document.getElementById('notesArea')?.value || ''
+      };
+
+      localStorage.setItem('appState', JSON.stringify(state));
+      document.cookie = `appState=${encodeURIComponent(JSON.stringify(state))}; path=/; max-age=31536000`;
+    }
+
+    function loadState() {
+      let state = localStorage.getItem('appState');
+
+      if (!state) {
+        const match = document.cookie.match(/appState=([^;]+)/);
+        if (match) state = decodeURIComponent(match[1]);
+      }
+
+      if (!state) return;
+
+      try {
+        state = JSON.parse(state);
+
+        if (state.selectedAudio) {
+          player.src = state.selectedAudio;
+        }
+
+        if (state.currentTime) {
+          player.currentTime = state.currentTime;
+        }
+
+        if (state.notes) {
+          document.getElementById('notesArea').value = state.notes;
+        }
+
+        if (state.bookmarks) {
+          bookmarkContainer.innerHTML = '';
+          bookmarkCount = 0;
+          currentColumn = createNewColumn();
+
+          state.bookmarks.forEach(timeStr => {
+            const [m, s] = timeStr.split(':').map(Number);
+            const t = m * 60 + s;
+
+            if (bookmarkCount % 5 === 0 && bookmarkCount !== 0) {
+              currentColumn = createNewColumn();
+            }
+
+            const li = document.createElement('li');
+
+            const playBtn = document.createElement('button');
+            playBtn.textContent = '▶';
+            playBtn.onclick = () => {
+              player.currentTime = t;
+              player.play();
+            };
+
+            const pauseBtn = document.createElement('button');
+            pauseBtn.textContent = '⏸';
+            pauseBtn.onclick = () => player.pause();
+
+            const span = document.createElement('span');
+            span.className = 'time';
+            span.textContent = timeStr;
+            span.style.margin = '0 8px';
+
+            li.appendChild(playBtn);
+            li.appendChild(pauseBtn);
+            li.appendChild(span);
+
+            currentColumn.appendChild(li);
+            bookmarkCount++;
+          });
+        }
+
+      } catch (e) {
+        console.error('Load state error', e);
+      }
+    }
+
+    function convertFloatToInt16(buffer) {
+      let l = buffer.length;
+      let buf = new Int16Array(l);
+      while (l--) {
+        buf[l] = Math.min(1, buffer[l]) * 0x7fff;
+      }
+      return buf;
+    }
+
+    async function loadMP3List() {
+      try {
+        const response = await fetch('./mp3-list.json');
+        const files = await response.json();
+
+        select.innerHTML = '';
+        const def = document.createElement('option');
+        def.textContent = '-- Choose a file --';
+        def.value = '';
+        select.appendChild(def);
+
+        files.forEach(file => {
+          const option = document.createElement('option');
+          option.value = './audio/' + file;
+          option.textContent = file.replace('.mp3', '').replace(/_/g, ' ');
+          select.appendChild(option);
+        });
+
+      } catch (e) {
+        select.innerHTML = '<option>Error loading JSON</option>';
+      }
+    }
+
+    select.addEventListener('change', function () {
+      if (this.value) {
+        player.src = this.value;
+        player.load();
+        bookmarkContainer.innerHTML = '';
+        bookmarkCount = 0;
+        currentColumn = createNewColumn();
+      }
+    });
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = Math.floor(sec % 60);
+      return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+    }
+
+    markBtn.addEventListener('click', () => {
+      const t = player.currentTime;
+
+      if (bookmarkCount % 5 === 0 && bookmarkCount !== 0) {
+        currentColumn = createNewColumn();
+      }
+
+      const li = document.createElement('li');
+
+      const playBtn = document.createElement('button');
+      playBtn.textContent = '▶';
+      playBtn.onclick = () => {
+        player.currentTime = t;
+        player.play();
+      };
+
+      const pauseBtn = document.createElement('button');
+      pauseBtn.textContent = '⏸';
+      pauseBtn.onclick = () => {
+        player.pause();
+      };
+
+      const span = document.createElement('span');
+      span.className = 'time';
+      span.textContent = formatTime(t);
+      span.style.margin = '0 8px';
+
+      li.appendChild(playBtn);
+      li.appendChild(pauseBtn);
+      li.appendChild(span);
+
+      currentColumn.appendChild(li);
+
+      bookmarkCount++;
+
+      setTimeout(saveState, 100);
+    });
+
+    // 錄音
+    let mediaRecorder;
+    let chunks = [];
+
+    startRec.onclick = async () => {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorder = new MediaRecorder(stream);
+
+      chunks = [];
+      mediaRecorder.ondataavailable = e => chunks.push(e.data);
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunks, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+
+        const li = document.createElement('li');
+
+        const audio = document.createElement('audio');
+        audio.controls = true;
+        audio.src = url;
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.textContent = '⬇ Download';
+        downloadBtn.onclick = () => {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `recording_${Date.now()}.webm`;
+          a.click();
+        };
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = '🗑 Delete';
+        deleteBtn.onclick = () => {
+          URL.revokeObjectURL(url);
+          li.remove();
+        };
+
+        li.appendChild(audio);
+        li.appendChild(document.createElement('br'));
+        li.appendChild(downloadBtn);
+        li.appendChild(deleteBtn);
+
+        recordList.appendChild(li);
+      };
+
+      mediaRecorder.start();
+      startRec.disabled = true;
+      stopRec.disabled = false;
+    };
+
+    stopRec.onclick = () => {
+      setTimeout(saveState, 100);
+      mediaRecorder.stop();
+      startRec.disabled = false;
+      stopRec.disabled = true;
+    };
+
+    // PDF 上傳
+    document.getElementById('pdfUpload').addEventListener('change', function () {
+      const file = this.files[0];
+      if (file) {
+        const url = URL.createObjectURL(file);
+        document.getElementById('pdfViewer').src = url;
+      }
+    });
+
+    // 字典
+    function getWord() {
+      return document.getElementById('dictInput').value.trim();
+    }
+
+    function openDictWindow(url) {
+      window.open(url, 'dictWindow', 'width=900,height=700');
+    }
+
+    function searchLEO() {
+      const word = getWord();
+      if (!word) return;
+      openDictWindow(`https://dict.leo.org/german-english/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
+    }
+
+    function searchDuden() {
+      const word = getWord();
+      if (!word) return;
+      openDictWindow(`https://www.duden.de/rechtschreibung/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
+    }
+
+    function searchDeepL() {
+      const word = getWord();
+      if (!word) return;
+      openDictWindow(`https://www.deepl.com/translator#de/en/${encodeURIComponent(word)}`, '_blank', 'width=900,height=700');
+    }
+
+    document.getElementById('notesArea').addEventListener('input', saveState);
+
+    player.addEventListener('pause', saveState);
+
+    function searchAll() {
+      searchLEO();
+      searchDuden();
+      searchDeepL();
+    }
+
+    loadMP3List();
+    loadState();
+  </script>
+</body>
+</html>
