@@ -1,13 +1,3 @@
-// =====================================
-// 🌍 DW Learning Tool (Render Full Version)
-// Backend: Node.js + Express
-// Frontend: Vanilla JS
-// =====================================
-
-// =========================
-// 📁 server.js (Render Backend)
-// =========================
-
 import express from "express";
 import fetch from "node-fetch";
 import * as cheerio from "cheerio";
