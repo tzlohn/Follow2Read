@@ -23,17 +23,11 @@ app.get("/api/parse", async (req, res) => {
 
     // 🧠 嘗試從 script / JSON 抓影片
     if (!iframeSrc && !videoSrc) {
-      $("script").each((i, el) => {
-        const content = $(el).html();
-
-        if (content && content.includes("mp4")) {
-          const match = content.match(/https?:\/\/[^\"']+\.mp4/);
-          if (match) {
-            videoSrc = match[0];
-            console.log("Found video in script:", videoSrc);
-          }
-        }
-      });
+      const embed = html.match(/https?:\/\/[^\"']+embed[^\"']+/);
+      if (embed) {
+        iframeSrc = embed[0];
+        console.log("Found embed:", iframeSrc);
+      }
     }
 
     // 📄 Text extraction (DW structure fallback)
