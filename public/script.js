@@ -1,7 +1,7 @@
 async function loadPage() {
   const url = document.getElementById("urlInput").value;
 
-  const res = await fetch(`/api/parse?url=${encodeURIComponent(url)}`);
+  const res = await fetch(window.location.origin + `/api/parse?url=${encodeURIComponent(url)}`);
   const data = await res.json();
 
   const video = document.getElementById("video");
