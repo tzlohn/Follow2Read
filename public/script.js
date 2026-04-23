@@ -20,11 +20,7 @@ function loadVideo() {
 
 function processText() {
   const text = document.getElementById("textInput").value;
-  renderSentences(text);
-}
 
-// ✂️ 核心斷句函式
-function renderSentences(text) {
   const container = document.getElementById("sentences");
   container.innerHTML = "";
 
@@ -38,11 +34,4 @@ function renderSentences(text) {
     div.innerText = s;
     container.appendChild(div);
   });
-}
-
-// 🔁 重新斷句（按鈕用）
-function reSplit() {
-  const text = document.getElementById("textInput").value;
-  console.log("Resplitting...");
-  renderSentences(text);
 }

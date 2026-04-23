@@ -2,39 +2,118 @@
 <html>
 <head>
   <meta charset="UTF-8" />
-  <title>YouTube Learning Tool</title>
+  <title>DW Learning Tool</title>
   <style>
-    body { margin:0; display:flex; height:100vh; font-family:Arial; }
-    #left { width:50%; background:black; display:flex; flex-direction:column; }
-    #right { width:50%; padding:20px; overflow-y:auto; }
-    #inputBar { padding:10px; background:#111; }
-    input { width:80%; padding:6px; }
-    button { padding:6px 10px; }
-    iframe { width:100%; height:80%; }
-    .sentence { cursor:pointer; margin-bottom:10px; padding:4px; }
-    .sentence:hover { background:#eee; }
+    body { margin:0; font-family:Arial; height:100vh; display:flex; flex-direction:column; }
+
+    /* Top input bar */
+    #topBar {
+      padding:10px;
+      background:#111;
+      display:flex;
+      gap:10px;
+    }
+
+    #topBar input {
+      flex:1;
+      padding:8px;
+    }
+
+    #main {
+      flex:1;
+      display:flex;
+    }
+
+    /* Left panel */
+    #left {
+      width:50%;
+      display:flex;
+      flex-direction:column;
+      border-right:1px solid #ccc;
+    }
+
+    #leftTop {
+      flex:1;
+      background:black;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      color:white;
+    }
+
+    #leftBottom {
+      flex:1;
+      padding:10px;
+      border-top:1px solid #ccc;
+    }
+
+    /* Right panel */
+    #right {
+      width:50%;
+      display:flex;
+      flex-direction:column;
+    }
+
+    #rightTop {
+      flex:1;
+      padding:15px;
+      overflow-y:auto;
+      border-bottom:1px solid #ccc;
+    }
+
+    #rightTop .sentence {
+      margin-bottom:10px;
+      cursor:pointer;
+    }
+
+    #rightTop .sentence:hover {
+      background:#eee;
+    }
+
+    button {
+      padding:6px 10px;
+    }
   </style>
 </head>
 <body>
 
-<div id="left">
-  <div id="inputBar">
-    <input id="urlInput" placeholder="Paste YouTube link here" />
-    <button onclick="loadVideo()">Load</button>
-  </div>
-
-  <iframe id="player" allowfullscreen></iframe>
+<!-- 🌐 URL input -->
+<div id="topBar">
+  <input id="urlInput" placeholder="Paste DW link here" />
+  <button onclick="loadDW()">Load</button>
 </div>
 
-<div id="right">
-  <textarea id="textInput" style="width:100%;height:150px;"></textarea>
+<div id="main">
 
-  <button onclick="processText()">Process</button>
-  <button onclick="reSplit()">🔁 重新斷句</button>
-  <button onclick="processText()">Process</button>
-  <div id="sentences"></div>
+  <!-- LEFT -->
+  <div id="left">
+
+    <!-- 上：影片區（暫時保留） -->
+    <div id="leftTop">
+      <p>Video area</p>
+    </div>
+
+    <!-- 下：錄音功能 -->
+    <div id="leftBottom">
+      <button onclick="startRecording()">🎙 Start</button>
+      <button onclick="stopRecording()">⏹ Stop</button>
+      <audio id="audioPlayback" controls></audio>
+    </div>
+
+  </div>
+
+  <!-- RIGHT -->
+  <div id="right">
+
+    <!-- 文字顯示區 -->
+    <div id="rightTop"></div>
+
+  </div>
+
 </div>
 
 <script src="script.js"></script>
 </body>
 </html>
+
+
