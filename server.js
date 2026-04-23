@@ -30,7 +30,32 @@ app.get("/api/parse", async (req, res) => {
     }).then(r => r.text());
 
     const $ = cheerio.load(html);
+    const nextData = $("#__NEXT_DATA__").html();
 
+    if (nextData) {
+      const json = JSON.parse(nextData);
+
+      console.log("Found NEXT_DATA");
+
+      // 👉 嘗試抓內容
+      const pageData = json.props?.pageProps;
+
+      // 🔍 找文字
+      let text = JSON.stringify(pageData);
+
+      // 🔍 找影片
+      let videoMatch = text.match(/https?:\/\/[^\"']+\.mp4/);
+
+      let videoSrc = videoMatch ? videoMatch[0] : null;
+
+      res.json({
+        iframeSrc: null,
+        videoSrc,
+        text
+      });
+
+      return;
+    }
     let iframeSrc = null;
     let videoSrc = null;
 
