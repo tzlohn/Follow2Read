@@ -17,6 +17,22 @@ app.use(express.static("public"));
 // 🔥 Stable DW Parser
 // =====================================
 
+const idMatch = url.match(/a-(\\d+)/);
+
+if (idMatch) {
+  const id = idMatch[1];
+
+  const iframeSrc = `https://www.dw.com/en/media-center/embed/${id}`;
+
+  console.log("✅ Using DW embed:", iframeSrc);
+
+  return res.json({
+    iframeSrc,
+    videoSrc: null,
+    text: ""
+  });
+}
+
 app.get("/api/parse", async (req, res) => {
   try {
     const url = req.query.url;
