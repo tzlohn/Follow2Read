@@ -1,4 +1,3 @@
-// 🌐 載入 DW 文章
 async function loadDW() {
   const url = document.getElementById("urlInput").value;
 
@@ -7,48 +6,24 @@ async function loadDW() {
     return;
   }
 
-  console.log("Fetching DW content...");
+  const res = await fetch(
+    "/api/parse?url=" + encodeURIComponent(url)
+  );
 
-  try {
-    const res = await fetch(
-      window.location.origin +
-      "/api/parse?url=" +
-      encodeURIComponent(url)
-    );
+  const data = await res.json();
 
-    const data = await res.json();
+  console.log("PDF link:", data.pdfLink);
 
-    console.log("API response:", data);
-
-    if (data.text && data.text.length > 0) {
-      renderText(data.text);
-    } else {
-      document.getElementById("rightTop").innerHTML =
-        "<p>No text found.</p>";
-    }
-
-  } catch (err) {
-    console.error(err);
-    alert("Failed to load content");
-  }
-}
-
-
-// 📄 顯示文字 + 斷句
-function renderText(text) {
   const container = document.getElementById("rightTop");
   container.innerHTML = "";
 
-  const sentences = text
-    .replace(/\n/g, " ")
-    .split(/(?<=[.!?])\s+/);
-
-  sentences.forEach((s) => {
-    const div = document.createElement("div");
-    div.className = "sentence";
-    div.innerText = s;
-    container.appendChild(div);
-  });
+  if (data.pdfLink) {
+    const iframe = document.createElement("iframe");
+    iframe.src = data.pdfLink;
+    container.appendChild(iframe);
+  } else {
+    container.innerHTML = "<p>No PDF found.</p>";
+  }
 }
 
 
@@ -62,23 +37,17 @@ async function startRecording() {
   mediaRecorder = new MediaRecorder(stream);
   audioChunks = [];
 
-  mediaRecorder.ondataavailable = (event) => {
-    audioChunks.push(event.data);
-  };
+  mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
 
   mediaRecorder.onstop = () => {
-    const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
-    const audioUrl = URL.createObjectURL(audioBlob);
-
-    const audio = document.getElementById("audioPlayback");
-    audio.src = audioUrl;
+    const blob = new Blob(audioChunks, { type: "audio/webm" });
+    const url = URL.createObjectURL(blob);
+    document.getElementById("audioPlayback").src = url;
   };
 
   mediaRecorder.start();
-  console.log("Recording started");
 }
 
 function stopRecording() {
   mediaRecorder.stop();
-  console.log("Recording stopped");
 }
