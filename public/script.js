@@ -14,15 +14,16 @@ async function loadDW() {
 
   console.log("PDF link:", data.pdfLink);
 
-  const container = document.getElementById("rightTop");
-  container.innerHTML = "";
-
   if (data.pdfLink) {
-    const iframe = document.createElement("iframe");
-    iframe.src = data.pdfLink;
-    container.appendChild(iframe);
+    // 👉 直接觸發下載
+    const a = document.createElement("a");
+    a.href = data.pdfLink;
+    a.download = "dw_article.pdf"; // 可自訂檔名
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   } else {
-    container.innerHTML = "<p>No PDF found.</p>";
+    alert("No PDF found on this page.");
   }
 }
 
