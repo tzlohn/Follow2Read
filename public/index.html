@@ -27,7 +27,10 @@
 </div>
 
 <div id="right">
-  <textarea id="textInput" placeholder="Paste transcript here" style="width:100%;height:150px;"></textarea>
+  <textarea id="textInput" style="width:100%;height:150px;"></textarea>
+
+  <button onclick="processText()">Process</button>
+  <button onclick="reSplit()">🔁 重新斷句</button>
   <button onclick="processText()">Process</button>
   <div id="sentences"></div>
 </div>
