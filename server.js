@@ -21,42 +21,11 @@ app.get("/api/parse", async (req, res) => {
     }
 
     // =========================================================
-    // 🟢 STEP 1: URL 推算 PDF（最快 & 最穩優先）
-    // =========================================================
-    const dateMatch = url.match(/(\d{8})-kurz-und-leicht/);
-
-    if (dateMatch) {
-      const date = dateMatch[1];
-
-      const guessedPdf = `https://static.dw.com/downloads/kurzundleicht_${date}.pdf`;
-
-      console.log("🔍 PDF guessed from URL:", guessedPdf);
-
-      return res.json({
-        pdfLink: guessedPdf,
-        source: "guessed",
-        valid: true
-      });
-    }
-
-    // =========================================================
-    // 🟡 STEP 2: 抓 HTML（fallback）
-    // =========================================================
-    const html = await fetch(url, {
-      headers: {
-        "User-Agent": "Mozilla/5.0"
-      }
-    }).then(r => r.text());
-
-    const $ = cheerio.load(html);
-
-    let pdfLink = null;
-
-    // =========================================================
     // 🔥 方法1：全域 regex 掃 static.dw.com PDF
     // =========================================================
     const globalMatch = html.match(
-      /https?:\/\/static\.dw\.com\/downloads\/[^\s"'<>]+\.pdf[^\s"'<>]*/g
+
+      /https:\/\/static\.dw\.com\/downloads\/(\d+)\/.*?(\d{4}-\d{2}-\d{2}).*?\.pdf/g
     );
 
     if (globalMatch && globalMatch.length > 0) {
