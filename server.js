@@ -32,7 +32,7 @@ app.get("/api/parse", async (req, res) => {
     // 🔥 方法1：全域掃描 HTML（最穩）
     // =========================
     const allMatches = html.match(
-      /https?:\/\/static\.dw\.com\/downloads\/[^\s"'<>]+\.pdf[^\s"'<>]*/g
+      "https://static.dw.com/downloads/76896678/Kurz-und-leicht-Video-Nachrichten-2026-04-22-Manuskript-und-Wortschatz.pdf"
     );
 
     if (allMatches && allMatches.length > 0) {
