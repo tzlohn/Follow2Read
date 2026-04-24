@@ -7,9 +7,11 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static("public"));
 
-// =========================
-// 📄 API: Extract DW PDF
-// =========================
+/**
+ * =========================
+ * 🎯 API: Parse DW page
+ * =========================
+ */
 app.get("/api/parse", async (req, res) => {
   try {
     const url = req.query.url;
@@ -18,6 +20,28 @@ app.get("/api/parse", async (req, res) => {
       return res.status(400).json({ error: "Missing URL" });
     }
 
+    // =========================================================
+    // 🟢 STEP 1: URL 推算 PDF（最快 & 最穩優先）
+    // =========================================================
+    const dateMatch = url.match(/(\d{8})-kurz-und-leicht/);
+
+    if (dateMatch) {
+      const date = dateMatch[1];
+
+      const guessedPdf = `https://static.dw.com/downloads/kurzundleicht_${date}.pdf`;
+
+      console.log("🔍 PDF guessed from URL:", guessedPdf);
+
+      return res.json({
+        pdfLink: guessedPdf,
+        source: "guessed",
+        valid: true
+      });
+    }
+
+    // =========================================================
+    // 🟡 STEP 2: 抓 HTML（fallback）
+    // =========================================================
     const html = await fetch(url, {
       headers: {
         "User-Agent": "Mozilla/5.0"
@@ -28,21 +52,21 @@ app.get("/api/parse", async (req, res) => {
 
     let pdfLink = null;
 
-    // =========================
-    // 🔥 方法1：全域掃描 HTML（最穩）
-    // =========================
-    const allMatches = html.match(
-      "https://static.dw.com/downloads/76896678/Kurz-und-leicht-Video-Nachrichten-2026-04-22-Manuskript-und-Wortschatz.pdf"
+    // =========================================================
+    // 🔥 方法1：全域 regex 掃 static.dw.com PDF
+    // =========================================================
+    const globalMatch = html.match(
+      /https?:\/\/static\.dw\.com\/downloads\/[^\s"'<>]+\.pdf[^\s"'<>]*/g
     );
 
-    if (allMatches && allMatches.length > 0) {
-      pdfLink = allMatches[0];
-      console.log("✅ Found PDF (global):", pdfLink);
+    if (globalMatch && globalMatch.length > 0) {
+      pdfLink = globalMatch[0];
+      console.log("✅ PDF found (global scan):", pdfLink);
     }
 
-    // =========================
-    // 🔥 方法2：從 script 裡抓（備用）
-    // =========================
+    // =========================================================
+    // 🔥 方法2：script fallback
+    // =========================================================
     if (!pdfLink) {
       $("script").each((i, el) => {
         const content = $(el).html();
@@ -54,29 +78,40 @@ app.get("/api/parse", async (req, res) => {
 
         if (match) {
           pdfLink = match[0];
-          console.log("✅ Found PDF (script):", pdfLink);
+          console.log("✅ PDF found (script):", pdfLink);
         }
       });
     }
 
-    // =========================
-    // ❗ 沒找到 PDF
-    // =========================
+    // =========================================================
+    // ❌ 沒找到 PDF
+    // =========================================================
     if (!pdfLink) {
       return res.json({
         pdfLink: null,
-        message: "No PDF found on this page"
+        message: "No PDF found"
       });
     }
 
-    res.json({ pdfLink });
+    // =========================================================
+    // ✅ 回傳結果
+    // =========================================================
+    return res.json({
+      pdfLink,
+      source: "html"
+    });
 
   } catch (err) {
-    console.error(err);
+    console.error("❌ Error:", err);
     res.status(500).json({ error: err.message });
   }
 });
 
+/**
+ * =========================
+ * 🚀 Server start
+ * =========================
+ */
 app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
 });
