@@ -1,3 +1,12 @@
+import express from "express";
+import fetch from "node-fetch";
+import * as cheerio from "cheerio";
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.static("public"));
+
 app.get("/api/parse", async (req, res) => {
   try {
     const url = req.query.url;
@@ -16,7 +25,6 @@ app.get("/api/parse", async (req, res) => {
 
     $("a").each((i, el) => {
       const href = $(el).attr("href");
-
       if (href && href.endsWith(".pdf")) {
         pdfLink = href;
       }
@@ -28,8 +36,11 @@ app.get("/api/parse", async (req, res) => {
 
     res.json({ pdfLink });
 
-  } catch (err) {   // ✅ 注意這裡
-    console.error(err);
+  } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
 });
