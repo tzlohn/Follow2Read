@@ -1,6 +1,8 @@
 import express from "express";
-import fetch from "node-fetch";
+import axios from "axios";
 import * as cheerio from "cheerio";
+import fs from "fs";
+import path from "path";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -9,72 +11,113 @@ app.use(express.static("public"));
 
 /**
  * =========================
- * 🎯 API: Parse DW page
+ * 🎯 API: 解析 DW 並找 PDF
  * =========================
  */
 app.get("/api/parse", async (req, res) => {
   try {
-    const url = req.query.url;
+    const dwUrl = req.query.url;
 
-    if (!url) {
+    if (!dwUrl) {
       return res.status(400).json({ error: "Missing URL" });
     }
 
-    // =========================================================
-    // 🔥 方法1：全域 regex 掃 static.dw.com PDF
-    // =========================================================
-    const globalMatch = html.match(
+    // 1️⃣ 抓 DW HTML
+    const { data: html } = await axios.get(dwUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0"
+      }
+    });
 
-      /https:\/\/static\.dw\.com\/downloads\/(\d+)\/.*?(\d{4}-\d{2}-\d{2}).*?\.pdf/g
-    );
+    // 2️⃣ cheerio 解析
+    const $ = cheerio.load(html);
 
-    if (globalMatch && globalMatch.length > 0) {
-      pdfLink = globalMatch[0];
-      console.log("✅ PDF found (global scan):", pdfLink);
+    let pdfUrl = null;
+
+    // =====================================================
+    // 🔥 核心方法：從 <a href> 找 PDF（你提供的邏輯）
+    // =====================================================
+    $("a").each((i, el) => {
+      const href = $(el).attr("href");
+
+      if (href && href.includes(".pdf")) {
+        pdfUrl = href.startsWith("http")
+          ? href
+          : "https://static.dw.com" + href;
+      }
+    });
+
+    // =====================================================
+    // 🔥 fallback：script 裡找 PDF
+    // =====================================================
+    if (!pdfUrl) {
+      const scriptMatches = html.match(
+        /https?:\/\/static\.dw\.com\/downloads\/[^\s"'<>]+\.pdf[^\s"'<>]*/g
+      );
+
+      if (scriptMatches && scriptMatches.length > 0) {
+        pdfUrl = scriptMatches[0];
+      }
     }
 
-    // =========================================================
-    // 🔥 方法2：script fallback
-    // =========================================================
-    if (!pdfLink) {
-      $("script").each((i, el) => {
-        const content = $(el).html();
-        if (!content) return;
-
-        const match = content.match(
-          /https?:\/\/static\.dw\.com\/downloads\/[^\s"'<>]+\.pdf[^\s"'<>]*/
-        );
-
-        if (match) {
-          pdfLink = match[0];
-          console.log("✅ PDF found (script):", pdfLink);
-        }
-      });
-    }
-
-    // =========================================================
+    // =====================================================
     // ❌ 沒找到 PDF
-    // =========================================================
-    if (!pdfLink) {
+    // =====================================================
+    if (!pdfUrl) {
       return res.json({
-        pdfLink: null,
+        pdfUrl: null,
         message: "No PDF found"
       });
     }
 
-    // =========================================================
-    // ✅ 回傳結果
-    // =========================================================
+    // =====================================================
+    // ✅ 回傳給前端（重點）
+    // =====================================================
     return res.json({
-      pdfLink,
-      source: "html"
+      pdfUrl
     });
 
   } catch (err) {
-    console.error("❌ Error:", err);
+    console.error("Error:", err.message);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+
+/**
+ * =========================
+ * 📥 （可選）直接下載 PDF
+ * =========================
+ */
+app.get("/api/download", async (req, res) => {
+  try {
+    const pdfUrl = req.query.url;
+
+    if (!pdfUrl) {
+      return res.status(400).json({ error: "Missing PDF URL" });
+    }
+
+    const response = await axios({
+      url: pdfUrl,
+      method: "GET",
+      responseType: "stream"
+    });
+
+    const fileName = path.basename(pdfUrl.split("?")[0]);
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename="${fileName}"`
+    );
+
+    response.data.pipe(res);
+
+  } catch (err) {
+    console.error(err.message);
     res.status(500).json({ error: err.message });
   }
 });
+
 
 /**
  * =========================

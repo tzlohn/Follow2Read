@@ -1,3 +1,10 @@
+
+//
+// =========================
+// 📄 DW PDF Loader
+// =========================
+//
+
 async function loadDW() {
   const url = document.getElementById("urlInput").value;
 
@@ -7,61 +14,122 @@ async function loadDW() {
   }
 
   try {
-    const res = await fetch(
-      "/api/parse?url=" + encodeURIComponent(url)
-    );
-
+    const res = await fetch("/api/parse?url=" + encodeURIComponent(url));
     const data = await res.json();
 
-    console.log("PDF link:", data.pdfLink);
+    const box = document.getElementById("rightTop");
 
-    const displayArea = document.getElementById("rightTop");
+    if (data.pdfUrl) {
+      box.innerHTML = `
+        <div style="padding:10px;">
+          <p>📄 PDF found:</p>
 
-    if (data.pdfLink) {
-      displayArea.innerHTML = `
-        <div style="padding:20px;">
-          <p><strong>PDF Link:</strong></p>
-          <a href="${data.pdfLink}" target="_blank">
-            ${data.pdfLink}
+          <a href="${data.pdfUrl}" target="_blank">
+            Open PDF
           </a>
+
+          <br><br>
+
+          <button onclick="window.open('/api/download?url=${data.pdfUrl}')">
+            ⬇ Download PDF
+          </button>
         </div>
       `;
     } else {
-      displayArea.innerHTML = `
-        <div style="padding:20px;">
-          <p>No PDF found for this page.</p>
-        </div>
-      `;
+      box.innerHTML = "<p>No PDF found</p>";
     }
 
   } catch (err) {
     console.error(err);
-    alert("Error fetching PDF.");
+    alert("Error loading DW page");
   }
 }
 
 
-// 🎙 錄音功能（保留你的原本功能）
+//
+// =========================
+// ✂️ Sentence splitting
+// =========================
+//
+
+function processText() {
+  const text = document.getElementById("textInput").value;
+  renderSentences(text);
+}
+
+function renderSentences(text) {
+  const container = document.getElementById("sentences");
+  container.innerHTML = "";
+
+  const sentences = text
+    .replace(/\n/g, " ")
+    .split(/(?<=[.!?])\s+/);
+
+  sentences.forEach((s) => {
+    const div = document.createElement("div");
+    div.className = "sentence";
+    div.innerText = s;
+    container.appendChild(div);
+  });
+}
+
+
+//
+// =========================
+// 🔁 re-split button
+// =========================
+//
+
+function reSplit() {
+  const text = document.getElementById("textInput").value;
+  renderSentences(text);
+}
+
+
+//
+// =========================
+// 🎙️ Recording feature (RESTORED)
+// =========================
+//
+
 let mediaRecorder;
 let audioChunks = [];
 
 async function startRecording() {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      audio: true
+    });
 
-  mediaRecorder = new MediaRecorder(stream);
-  audioChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
-  mediaRecorder.ondataavailable = (e) => audioChunks.push(e.data);
+    mediaRecorder.ondataavailable = (e) => {
+      audioChunks.push(e.data);
+    };
 
-  mediaRecorder.onstop = () => {
-    const blob = new Blob(audioChunks, { type: "audio/webm" });
-    const url = URL.createObjectURL(blob);
-    document.getElementById("audioPlayback").src = url;
-  };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      const url = URL.createObjectURL(blob);
 
-  mediaRecorder.start();
+      const audio = document.getElementById("audioPlayback");
+      if (audio) {
+        audio.src = url;
+      }
+    };
+
+    mediaRecorder.start();
+    console.log("🎙 Recording started");
+
+  } catch (err) {
+    console.error("Microphone error:", err);
+    alert("Microphone access denied");
+  }
 }
 
 function stopRecording() {
-  mediaRecorder.stop();
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+    console.log("🛑 Recording stopped");
+  }
 }
