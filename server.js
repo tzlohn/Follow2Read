@@ -7,9 +7,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(express.static("public"));
 
-// =========================
-// 📄 API: Extract DW PDF
-// =========================
+// =====================================
+// 📄 API: Extract PDF link from DW page
+// =====================================
 app.get("/api/parse", async (req, res) => {
   try {
     const url = req.query.url;
@@ -28,46 +28,21 @@ app.get("/api/parse", async (req, res) => {
 
     let pdfLink = null;
 
-    // =========================
-    // 🔥 方法1：直接從 HTML 抓
-    // =========================
-    const matchDirect = html.match(
-      /https?:\/\/static\.dw\.com\/downloads\/[^"' ]+\.pdf/
-    );
+    // 🔍 找 PDF 下載連結
+    $("a").each((i, el) => {
+      const href = $(el).attr("href");
 
-    if (matchDirect) {
-      pdfLink = matchDirect[0];
-      console.log("✅ Found PDF (direct):", pdfLink);
+      if (href && href.endsWith(".pdf")) {
+        pdfLink = href;
+      }
+    });
+
+    // 👉 補完整網址
+    if (pdfLink && pdfLink.startsWith("/")) {
+      pdfLink = "https://learngerman.dw.com" + pdfLink;
     }
 
-    // =========================
-    // 🔥 方法2：從 script 裡抓（備用）
-    // =========================
-    if (!pdfLink) {
-      $("script").each((i, el) => {
-        const content = $(el).html();
-        if (!content) return;
-
-        const match = content.match(
-          /https?:\/\/static\.dw\.com\/downloads\/[^"' ]+\.pdf/
-        );
-
-        if (match) {
-          pdfLink = match[0];
-          console.log("✅ Found PDF (script):", pdfLink);
-        }
-      });
-    }
-
-    // =========================
-    // ❗ 沒找到 PDF
-    // =========================
-    if (!pdfLink) {
-      return res.json({
-        pdfLink: null,
-        message: "No PDF found on this page"
-      });
-    }
+    console.log("PDF:", pdfLink);
 
     res.json({ pdfLink });
 
