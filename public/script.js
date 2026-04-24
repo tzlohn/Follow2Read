@@ -18,7 +18,6 @@ async function loadDW() {
     const displayArea = document.getElementById("rightTop");
 
     if (data.pdfLink) {
-      // 👉 在右上方顯示可點擊連結
       displayArea.innerHTML = `
         <div style="padding:20px;">
           <p><strong>PDF Link:</strong></p>
@@ -42,7 +41,7 @@ async function loadDW() {
 }
 
 
-// 🎙 錄音功能
+// 🎙 錄音功能（保留你的原本功能）
 let mediaRecorder;
 let audioChunks = [];
 
