@@ -72,8 +72,9 @@
 
 <!-- 🔝 URL 輸入 -->
 <div class="top-bar">
-    <input id="urlInput" placeholder="貼上 YouTube URL">
+    <input id="urlInput" placeholder="貼上 YouTube 或 DW URL">
     <button onclick="loadVideo()">載入影片</button>
+    <button onclick="getPDF()">抓 PDF</button>
 </div>
 
 <div class="container">
@@ -177,6 +178,40 @@
 
     function stopRecording() {
         mediaRecorder.stop();
+    }
+
+    async function getPDF() {
+    const url = document.getElementById("urlInput").value;
+
+    if (!url) {
+        alert("請先貼上 URL");
+        return;
+    }
+
+    try {
+        const res = await fetch("/api/get_pdf", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+
+        if (data.pdf_url) {
+            // ✅ 彈出視窗
+            alert("找到 PDF：\n" + data.pdf_url);
+
+            // 或開新分頁（更好用）
+            window.open(data.pdf_url, "_blank");
+        } else {
+            alert("找不到 PDF");
+        }
+
+    } catch (err) {
+        alert("發生錯誤：" + err);
+    }
     }
 </script>
 

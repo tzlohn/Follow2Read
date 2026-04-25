@@ -9,21 +9,19 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
-
 @app.route("/api/get_pdf", methods=["POST"])
 def get_pdf():
     data = request.json
     url = data.get("url")
 
     try:
-        headers = {
-            "User-Agent": "Mozilla/5.0"
-        }
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=10)
+        res.raise_for_status()
 
-        res = requests.get(url, headers=headers)
         soup = BeautifulSoup(res.text, "html.parser")
 
-        # 方法1：直接找所有 a 標籤中的 PDF
+        # 方法1：找 <a> 裡的 pdf
         for a in soup.find_all("a", href=True):
             href = a["href"]
             if ".pdf" in href.lower():
@@ -31,9 +29,8 @@ def get_pdf():
                     href = "https://static.dw.com" + href
                 return jsonify({"pdf_url": href})
 
-        # 方法2：用 regex 找 static.dw.com 的 PDF
+        # 方法2：regex 掃整頁
         match = re.search(r"https://static\.dw\.com/downloads/.*?\.pdf", res.text)
-        print(match.group)
         if match:
             return jsonify({"pdf_url": match.group(0)})
 
