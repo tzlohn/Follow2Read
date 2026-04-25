@@ -1,25 +1,8 @@
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, request, jsonify, render_template
 from playwright.sync_api import sync_playwright
-import requests
-import io
+import re
 
 app = Flask(__name__)
-
-@app.route("/api/get_dom", methods=["POST"])
-def get_dom():
-    url = request.json.get("url")
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
-
-        page.goto(url, wait_until="networkidle")
-
-        html = page.content()  # 👈 這個就是 F12 DOM
-
-        browser.close()
-
-    return jsonify({"html": html})
 
 
 @app.route("/")
@@ -27,30 +10,44 @@ def home():
     return render_template("index.html")
 
 
-@app.route("/api/download_html", methods=["POST"])
-def download_html():
-    data = request.json
-    url = data.get("url")
+@app.route("/api/get_dom", methods=["POST"])
+def get_dom():
+    url = request.json.get("url")
 
     try:
-        headers = {"User-Agent": "Mozilla/5.0"}
-        res = requests.get(url, headers=headers, timeout=10)
-        res.raise_for_status()
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-setuid-sandbox"]
+            )
 
-        # 把 HTML 存到記憶體（不用真的寫檔案）
-        file_stream = io.BytesIO()
-        file_stream.write(res.text.encode("utf-8"))
-        file_stream.seek(0)
+            page = browser.new_page()
 
-        return send_file(
-            file_stream,
-            mimetype="text/plain",
-            as_attachment=True,
-            download_name="page_source.txt"
-        )
+            # 👉 等 DW JS 跑完（關鍵）
+            page.goto(url, wait_until="networkidle", timeout=60000)
+
+            html = page.content()  # 🔥 F12 DOM
+
+            browser.close()
+
+        # 🔍 抓 PDF（DW static pattern）
+        pdf_url = None
+
+        match = re.search(r"https://static\.dw\.com/downloads/.*?\.pdf", html)
+        if match:
+            pdf_url = match.group(0)
+
+        return jsonify({
+            "status": "ok",
+            "html": html,
+            "pdf_url": pdf_url
+        })
 
     except Exception as e:
-        return {"error": str(e)}, 500
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 
 if __name__ == "__main__":

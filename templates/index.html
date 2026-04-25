@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>DW Parser Tool</title>
+    <title>DW DOM Viewer</title>
 
     <style>
         body {
@@ -12,7 +12,7 @@
 
         .top {
             padding: 10px;
-            background: #f2f2f2;
+            background: #f0f0f0;
         }
 
         .top input {
@@ -42,56 +42,62 @@
         }
 
         #htmlBox {
-            height: 70vh;
-            overflow: auto;
             white-space: pre-wrap;
             background: #111;
             color: #0f0;
+            height: 65vh;
+            overflow: auto;
             font-size: 12px;
         }
 
         a {
             word-break: break-all;
         }
+
+        button {
+            cursor: pointer;
+        }
     </style>
 </head>
 
 <body>
 
-<!-- 🔝 URL -->
+<!-- 🔝 URL 輸入 -->
 <div class="top">
     <input id="urlInput" placeholder="貼上 DW URL">
-    <button onclick="analyze()">解析</button>
+    <button onclick="analyze()">解析 DOM</button>
 </div>
 
 <div class="container">
 
-    <!-- 左邊 -->
+    <!-- 左 -->
     <div class="left">
 
         <div class="box">
-            <h3>PDF 下載連結</h3>
-            <div id="pdfBox">尚未載入</div>
+            <h3>PDF 下載</h3>
+            <div id="pdfBox">尚未解析</div>
         </div>
 
         <div class="box">
-            <h3>操作</h3>
-            <button onclick="downloadPDF()">下載 PDF</button>
+            <button onclick="openPDF()">開啟 PDF</button>
         </div>
 
     </div>
 
-    <!-- 右邊 -->
+    <!-- 右 -->
     <div class="right">
+
         <div class="box">
-            <h3>HTML / DOM（F12內容）</h3>
-            <div id="htmlBox"></div>
+            <h3>F12 DOM（Playwright）</h3>
+            <div id="htmlBox">尚未載入</div>
         </div>
+
     </div>
 
 </div>
 
 <script>
+
 let pdfUrl = "";
 let htmlData = "";
 
@@ -99,34 +105,56 @@ let htmlData = "";
 async function analyze() {
     const url = document.getElementById("urlInput").value;
 
-    const res = await fetch("/api/get_dom", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({ url })
-    });
+    document.getElementById("pdfBox").innerText = "loading...";
+    document.getElementById("htmlBox").innerText = "loading...";
 
-    const data = await res.json();
+    try {
+        const res = await fetch("/api/get_dom", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ url })
+        });
 
-    pdfUrl = data.pdf_url || "";
-    htmlData = data.html || "";
+        const data = await res.json();
 
-    // PDF 顯示
-    document.getElementById("pdfBox").innerHTML =
-        pdfUrl ? `<a href="${pdfUrl}" target="_blank">${pdfUrl}</a>` : "找不到 PDF";
+        console.log("RESPONSE:", data);
 
-    // HTML 顯示（截斷避免爆炸）
-    document.getElementById("htmlBox").innerText =
-        htmlData.substring(0, 50000);
+        if (data.status !== "ok") {
+            alert("Error: " + data.message);
+            return;
+        }
+
+        // PDF
+        pdfUrl = data.pdf_url;
+
+        if (pdfUrl) {
+            document.getElementById("pdfBox").innerHTML =
+                `<a href="${pdfUrl}" target="_blank">${pdfUrl}</a>`;
+        } else {
+            document.getElementById("pdfBox").innerText = "找不到 PDF";
+        }
+
+        // DOM
+        htmlData = data.html;
+
+        document.getElementById("htmlBox").innerText =
+            htmlData.substring(0, 80000); // 避免爆 UI
+
+    } catch (err) {
+        alert("fetch error: " + err);
+    }
 }
 
-/* 📥 PDF 下載 */
-function downloadPDF() {
+
+/* 📄 打開 PDF */
+function openPDF() {
     if (!pdfUrl) {
         alert("沒有 PDF");
         return;
     }
     window.open(pdfUrl, "_blank");
 }
+
 </script>
 
 </body>
