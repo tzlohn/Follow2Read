@@ -75,6 +75,7 @@
     <input id="urlInput" placeholder="貼上 YouTube 或 DW URL">
     <button onclick="loadVideo()">載入影片</button>
     <button onclick="getPDF()">抓 PDF</button>
+    <button onclick="downloadHTML()">下載 HTML</button>
 </div>
 
 <div class="container">
@@ -212,6 +213,30 @@
     } catch (err) {
         alert("發生錯誤：" + err);
     }
+    }
+    
+    async function downloadHTML() {
+        const url = document.getElementById("urlInput").value;
+
+        if (!url) {
+            alert("請先貼上 URL");
+            return;
+        }
+
+        const res = await fetch("/api/download_html", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({ url })
+        });
+
+        const blob = await res.blob();
+
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = "page_source.txt";
+        link.click();
     }
 </script>
 

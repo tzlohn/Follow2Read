@@ -1,7 +1,6 @@
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, send_file
 import requests
-from bs4 import BeautifulSoup
-import re
+import io
 
 app = Flask(__name__)
 
@@ -9,8 +8,9 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
-@app.route("/api/get_pdf", methods=["POST"])
-def get_pdf():
+
+@app.route("/api/download_html", methods=["POST"])
+def download_html():
     data = request.json
     url = data.get("url")
 
@@ -19,25 +19,20 @@ def get_pdf():
         res = requests.get(url, headers=headers, timeout=10)
         res.raise_for_status()
 
-        soup = BeautifulSoup(res.text, "html.parser")
+        # 把 HTML 存到記憶體（不用真的寫檔案）
+        file_stream = io.BytesIO()
+        file_stream.write(res.text.encode("utf-8"))
+        file_stream.seek(0)
 
-        # 方法1：找 <a> 裡的 pdf
-        for a in soup.find_all("a", href=True):
-            href = a["href"]
-            if ".pdf" in href.lower():
-                if href.startswith("/"):
-                    href = "https://static.dw.com" + href
-                return jsonify({"pdf_url": href})
-
-        # 方法2：regex 掃整頁
-        match = re.search(r"https://static\.dw\.com/downloads/.*?\.pdf", res.text)
-        if match:
-            return jsonify({"pdf_url": match.group(0)})
-
-        return jsonify({"error": "找不到 PDF"}), 404
+        return send_file(
+            file_stream,
+            mimetype="text/plain",
+            as_attachment=True,
+            download_name="page_source.txt"
+        )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return {"error": str(e)}, 500
 
 
 if __name__ == "__main__":
