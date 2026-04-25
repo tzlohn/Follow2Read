@@ -1,8 +1,26 @@
-from flask import Flask, render_template, request, send_file
+from flask import Flask, render_template, request, send_file, jsonify
+from playwright.sync_api import sync_playwright
 import requests
 import io
 
 app = Flask(__name__)
+
+@app.route("/api/get_dom", methods=["POST"])
+def get_dom():
+    url = request.json.get("url")
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
+
+        page.goto(url, wait_until="networkidle")
+
+        html = page.content()  # 👈 這個就是 F12 DOM
+
+        browser.close()
+
+    return jsonify({"html": html})
+
 
 @app.route("/")
 def home():
