@@ -2,3 +2,5 @@ flask
 requests
 bs4
 gunicorn
+beautifulsoup4
+playwright
