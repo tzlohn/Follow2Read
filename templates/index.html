@@ -1,9 +1,32 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>My Render App</title>
+    <title>Flask Interaction Demo</title>
 </head>
 <body>
-    <h1>Hello Render + Python!</h1>
+    <h1>Render + Flask 互動測試</h1>
+
+    <input id="inputText" placeholder="輸入一些文字">
+    <button onclick="sendData()">送出</button>
+
+    <p id="result"></p>
+
+    <script>
+        async function sendData() {
+            const text = document.getElementById("inputText").value;
+
+            const response = await fetch("/api/echo", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ text: text })
+            });
+
+            const data = await response.json();
+
+            document.getElementById("result").innerText = data.result;
+        }
+    </script>
 </body>
 </html>
