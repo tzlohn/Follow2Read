@@ -1,4 +1,7 @@
 from flask import Flask, render_template, request, jsonify
+import requests
+from bs4 import BeautifulSoup
+import re
 
 app = Flask(__name__)
 
@@ -6,15 +9,39 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
-@app.route("/api/echo", methods=["POST"])
-def echo():
+
+@app.route("/api/get_pdf", methods=["POST"])
+def get_pdf():
     data = request.json
-    user_text = data.get("text", "")
+    url = data.get("url")
 
-    # 這裡就是「後端邏輯」
-    response_text = f"你剛剛輸入的是：{user_text}"
+    try:
+        headers = {
+            "User-Agent": "Mozilla/5.0"
+        }
 
-    return jsonify({"result": response_text})
+        res = requests.get(url, headers=headers)
+        soup = BeautifulSoup(res.text, "html.parser")
+
+        # 方法1：直接找所有 a 標籤中的 PDF
+        for a in soup.find_all("a", href=True):
+            href = a["href"]
+            if ".pdf" in href.lower():
+                if href.startswith("/"):
+                    href = "https://static.dw.com" + href
+                return jsonify({"pdf_url": href})
+
+        # 方法2：用 regex 找 static.dw.com 的 PDF
+        match = re.search(r"https://static\.dw\.com/downloads/.*?\.pdf", res.text)
+        print(match.group)
+        if match:
+            return jsonify({"pdf_url": match.group(0)})
+
+        return jsonify({"error": "找不到 PDF"}), 404
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
