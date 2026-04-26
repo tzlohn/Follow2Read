@@ -143,7 +143,9 @@
 <body>
 
 <div class="top-bar">
-    <select id="newsSelect"></select>
+    <select id="newsSelect">
+        <option>Loading...</option>
+    </select>
     <button onclick="getPDF()">顯示 PDF</button>
     <div id="loadingSpinner" class="spinner"></div>
 </div>
@@ -368,19 +370,31 @@ async function getPDF() {
 }
 
 window.onload = loadDWList;
+document.addEventListener("DOMContentLoaded", loadDWList);
 
 async function loadDWList() {
-    const res = await fetch("/api/list_dw");
-    const data = await res.json();
-    console.log(data)
-    const select = document.getElementById("newsSelect");
+    try {
+        const res = await fetch("/api/list_dw");
+        const data = await res.json();
 
-    data.forEach(item => {
-        const option = document.createElement("option");
-        option.value = item.url;
-        option.textContent = item.date;
-        select.appendChild(option);
-    });
+        const select = document.getElementById("newsSelect");
+        select.innerHTML = "";
+
+        data.forEach(item => {
+            const option = document.createElement("option");
+            option.value = item.url;
+            option.textContent = item.date;
+            select.appendChild(option);
+        });
+
+        // 預設選第一個
+        if (data.length > 0) {
+            select.selectedIndex = 0;
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
 }
 </script>
 
