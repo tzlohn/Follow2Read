@@ -203,13 +203,13 @@
         const data = await res.json();
         console.log(data);
 
-        alert(data.pdf_url)
         if (data.pdf_url) {
             document.getElementById("pdfViewer").src =
                 "https://docs.google.com/gview?url=" + data.pdf_url + "&embedded=true";
         }
-
-        alert(data.video_url)
+        
+        id = extractVideoID(data.video_url)
+        alert(id)
         if (data.video_url) {
             player.loadVideoByUrl(data.video_url);
         }
