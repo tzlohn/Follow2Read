@@ -372,7 +372,7 @@ window.onload = loadDWList;
 async function loadDWList() {
     const res = await fetch("/api/list_dw");
     const data = await res.json();
-
+    console.log(data)
     const select = document.getElementById("newsSelect");
 
     data.forEach(item => {
