@@ -10,14 +10,13 @@
             font-family: Arial;
         }
 
-        /* 上方 URL 輸入 */
         .top-bar {
             padding: 10px;
             background: #f0f0f0;
         }
 
         .top-bar input {
-            width: 80%;
+            width: 70%;
             padding: 8px;
         }
 
@@ -25,13 +24,28 @@
             padding: 8px;
         }
 
-        /* 主體 */
+        /* 🔄 Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ccc;
+            border-top: 3px solid #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            display: none;
+        }
+
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
         .container {
             display: flex;
             height: calc(100vh - 60px);
         }
 
-        /* 左右 */
         .left {
             width: 50%;
             display: flex;
@@ -44,7 +58,6 @@
             padding: 10px;
         }
 
-        /* 左邊上下 */
         .left-top {
             flex: 2;
             padding: 10px;
@@ -61,7 +74,6 @@
             height: 300px;
         }
 
-        /* PDF viewer */
         #pdfViewer {
             width: 100%;
             height: 90%;
@@ -72,131 +84,176 @@
             display: block;
             margin: 5px 0;
         }
+
+        /* 🎤 波形畫布 */
+        #waveCanvas {
+            width: 100%;
+            height: 80px;
+            background: #111;
+            display: none;
+        }
     </style>
 </head>
 
 <body>
 
-<!-- 🔝 URL 輸入 -->
 <div class="top-bar">
     <input id="urlInput" placeholder="貼上 YouTube 或 DW URL">
     <button onclick="getPDF()">顯示 PDF</button>
+    <div id="loadingSpinner" class="spinner"></div>
 </div>
 
 <div class="container">
 
-    <!-- 左 -->
     <div class="left">
 
-        <!-- 左上 -->
         <div class="left-top">
             <div id="player"></div>
 
             <button onclick="recordTime()">記錄時間</button>
-
             <div class="timestamps" id="timestamps"></div>
         </div>
 
-        <!-- 左下（錄音） -->
         <div class="left-bottom">
             <h3>錄音功能</h3>
             <button onclick="startRecording()">開始錄音</button>
             <button onclick="stopRecording()">停止錄音</button>
+
+            <!-- 🎤 波形 -->
+            <canvas id="waveCanvas"></canvas>
+
             <audio id="audioPlayback" controls></audio>
         </div>
 
     </div>
 
-    <!-- 右 -->
     <div class="right">
         <h3>PDF 顯示區</h3>
-
         <iframe id="pdfViewer"></iframe>
     </div>
 
 </div>
 
-<!-- YouTube API -->
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-    let player;
+let player;
 
-    function onYouTubeIframeAPIReady() {
-        player = new YT.Player('player', {
-            height: '300',
-            width: '100%',
-            videoId: ''
-        });
-    }
+function onYouTubeIframeAPIReady() {
+    player = new YT.Player('player', {
+        height: '300',
+        width: '100%',
+        videoId: ''
+    });
+}
 
-    function extractVideoID(url) {
-        const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&]+)/;
-        const match = url.match(regExp);
-        return match ? match[1] : null;
-    }
+function extractVideoID(url) {
+    const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&]+)/;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
+}
 
-    function loadVideo() {
-        const url = document.getElementById("urlInput").value;
-        const videoId = extractVideoID(url);
+function recordTime() {
+    const time = Math.floor(player.getCurrentTime());
 
-        if (videoId) {
-            player.loadVideoById(videoId);
-        } else {
-            alert("無效的 YouTube URL");
+    const btn = document.createElement("button");
+    btn.innerText = "跳到 " + time + " 秒";
+
+    btn.onclick = () => player.seekTo(time, true);
+
+    document.getElementById("timestamps").appendChild(btn);
+}
+
+/* 🎤 錄音 + 波形 */
+let mediaRecorder;
+let audioChunks = [];
+let audioContext;
+let analyser;
+let dataArray;
+let animationId;
+
+async function startRecording() {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    // 🎧 Web Audio setup
+    audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+
+    analyser.fftSize = 2048;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    // 🎨 Canvas
+    const canvas = document.getElementById("waveCanvas");
+    canvas.style.display = "block";
+    const ctx = canvas.getContext("2d");
+
+    function draw() {
+        animationId = requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(dataArray);
+
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = "#00ff88";
+
+        ctx.beginPath();
+
+        let sliceWidth = canvas.width / dataArray.length;
+        let x = 0;
+
+        for (let i = 0; i < dataArray.length; i++) {
+            let v = dataArray[i] / 128.0;
+            let y = v * canvas.height / 2;
+
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+
+            x += sliceWidth;
         }
+
+        ctx.lineTo(canvas.width, canvas.height / 2);
+        ctx.stroke();
     }
 
-    function recordTime() {
-        const time = Math.floor(player.getCurrentTime());
+    draw();
 
-        const btn = document.createElement("button");
-        btn.innerText = "跳到 " + time + " 秒";
+    // 🎤 MediaRecorder
+    mediaRecorder = new MediaRecorder(stream);
 
-        btn.onclick = () => {
-            player.seekTo(time, true);
-        };
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-        document.getElementById("timestamps").appendChild(btn);
-    }
+    mediaRecorder.onstop = () => {
+        cancelAnimationFrame(animationId);
+        canvas.style.display = "none";
 
-    // 🎤 錄音功能
-    let mediaRecorder;
-    let audioChunks = [];
+        const audioBlob = new Blob(audioChunks);
+        document.getElementById("audioPlayback").src =
+            URL.createObjectURL(audioBlob);
 
-    async function startRecording() {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+    };
 
-        mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.start();
+}
 
-        mediaRecorder.ondataavailable = event => {
-            audioChunks.push(event.data);
-        };
+function stopRecording() {
+    mediaRecorder.stop();
+}
 
-        mediaRecorder.onstop = () => {
-            const audioBlob = new Blob(audioChunks);
-            const audioUrl = URL.createObjectURL(audioBlob);
+/* 📄 PDF + YouTube */
+async function getPDF() {
+    const spinner = document.getElementById("loadingSpinner");
+    spinner.style.display = "inline-block";
 
-            document.getElementById("audioPlayback").src = audioUrl;
-            audioChunks = [];
-        };
+    const url = document.getElementById("urlInput").value;
 
-        mediaRecorder.start();
-    }
-
-    function stopRecording() {
-        mediaRecorder.stop();
-    }
-
-    // 📄 PDF 顯示（改成 iframe）
-    async function getPDF() {
-        const url = document.getElementById("urlInput").value;
-
+    try {
         const res = await fetch("/api/get_dom", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: {"Content-Type": "application/json"},
             body: JSON.stringify({ url })
         });
 
@@ -207,18 +264,22 @@
             document.getElementById("pdfViewer").src =
                 "https://docs.google.com/gview?url=" + data.pdf_url + "&embedded=true";
         }
-        
-        id = extractVideoID(data.video_url)
-        alert(id)
+
         if (data.video_url) {
-            player.loadVideoById(id);
+            const videoId = extractVideoID(data.video_url);
+            if (videoId) player.loadVideoById(videoId);
         }
 
         if (!data.video_url && !data.pdf_url) {
             alert("沒有找到內容");
         }
+
+    } catch (e) {
+        alert("發生錯誤");
     }
 
+    spinner.style.display = "none";
+}
 </script>
 
 </body>
