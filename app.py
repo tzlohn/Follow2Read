@@ -73,13 +73,13 @@ def get_dom():
             results = ydl.extract_info(f"ytsearch1:{query}", download=False)
 
             video = results['entries'][0]
-            video_url = f"https://www.youtube.com/watch?v={video['id']}"
+            video_url = video["webpage_url"]
 
         return jsonify({
             "status": "ok",
             "title": title,
             "pdf_url": pdf_url,
-            "video_id": video_url
+            "video_url": video_url
         })
 
     except Exception as e:
