@@ -10,6 +10,67 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
+@app.route("/api/list_dw", methods=["GET"])
+def list_dw():
+    url = "https://learngerman.dw.com/de/kurz-und-leicht/s-69137519"
+
+    results = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-sandbox", "--disable-dev-shm-usage"]
+        )
+
+        page = browser.new_page()
+        page.goto(url, timeout=60000)
+
+        page.wait_for_timeout(3000)
+
+        # scroll（DW 很重要）
+        for _ in range(3):
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(1500)
+
+        # 🔥 抓所有文章連結 + 標題
+        items = page.evaluate("""
+            () => {
+                return Array.from(document.querySelectorAll("a"))
+                    .map(a => ({
+                        href: a.href,
+                        text: a.innerText
+                    }))
+                    .filter(x =>
+                        x.href.includes("/de/") &&
+                        x.href.includes("kurz-und-leicht-video") &&
+                        x.text.length > 5
+                    );
+            }
+        """)
+
+        browser.close()
+
+    # 🔥 整理成 {date, url}
+    import re
+
+    for item in items:
+        match = re.search(r'(\\d{2}\\.\\d{2}\\.\\d{4})', item["text"])
+        if match:
+            results.append({
+                "date": match.group(1),
+                "url": item["href"]
+            })
+
+    # 去重
+    seen = set()
+    unique = []
+    for r in results:
+        if r["url"] not in seen:
+            seen.add(r["url"])
+            unique.append(r)
+
+    return jsonify(unique)
+
 @app.route("/api/get_dom", methods=["POST"])
 def get_dom():
     try:
