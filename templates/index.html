@@ -211,7 +211,7 @@
         id = extractVideoID(data.video_url)
         alert(id)
         if (data.video_url) {
-            player.loadVideoByUrl(data.video_url);
+            player.loadVideoById(id);
         }
 
         if (!data.video_url && !data.pdf_url) {
