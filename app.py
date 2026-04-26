@@ -44,6 +44,7 @@ def get_dom():
         for l in links:
             if l and ".pdf" in l:
                 pdf_url = l
+                #print(pdf_url)
                 break
 
         # =========================
@@ -76,6 +77,7 @@ def get_dom():
     # =========================
     # ✅ 統一回傳
     # =========================
+    pdf_url = r"https://static.dw.com/downloads/76925547/Kurz-und-leicht-Video-Nachrichten-2026-04-24-Manuskript-und-Wortschatz.pdf"
     return jsonify({
         "status": "ok",
         "pdf_url": pdf_url  # 可能是 None
