@@ -1,100 +1,95 @@
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-import time
+from playwright.sync_api import sync_playwright
 import json
 
 URL = "https://learngerman.dw.com/de/06042026-kurz-und-leicht-video-nachrichten-zum-deutschlernen/a-76679751"
 
-options = webdriver.ChromeOptions()
-options.add_argument("--headless=new")
-options.add_argument("--disable-gpu")
-options.add_argument("--no-sandbox")
+with sync_playwright() as p:
+    browser = p.chromium.launch(headless=True)
+    page = browser.new_page()
 
-driver = webdriver.Chrome(
-    service=Service(ChromeDriverManager().install()),
-    options=options
-)
+    page.goto(URL, timeout=60000)
 
-try:
-    driver.get(URL)
+    # ❗關鍵：等真正內容，不是 networkidle
+    try:
+        page.wait_for_selector("h1", timeout=15000)
+    except:
+        print("⚠️ h1 not found, continue anyway")
 
-    wait = WebDriverWait(driver, 20)
-
-    # ✅ 等 React 基本載入
-    wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
-    time.sleep(3)
-
-    # 🔥 scroll trigger lazy load
-    driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-    time.sleep(3)
+    # 🔥 多次 scroll（DW 很吃這個）
+    for _ in range(3):
+        page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+        page.wait_for_timeout(2000)
 
     # =========================
-    # 1️⃣ Title（多 fallback）
+    # 1️⃣ Title（更穩）
     # =========================
-    title = None
-    selectors = ["h1", "h2", "title"]
-
-    for sel in selectors:
-        try:
-            el = driver.find_element(By.TAG_NAME, sel)
-            if el.text.strip():
-                title = el.text
-                break
-        except:
-            pass
-
     print("\n📌 TITLE:")
+
+    title = page.evaluate("""
+        () => {
+            let el = document.querySelector("h1") || 
+                     document.querySelector("h2") || 
+                     document.title;
+            return el ? el.innerText || el : null;
+        }
+    """)
+
     print(title)
 
     # =========================
-    # 2️⃣ iframe video
+    # 2️⃣ iframe（直接 JS 抓）
     # =========================
     print("\n🎬 IFRAME SOURCES:")
 
-    WebDriverWait(driver, 10).until(
-        lambda d: len(d.find_elements(By.TAG_NAME, "iframe")) > 0
-    )
+    iframes = page.evaluate("""
+        () => Array.from(document.querySelectorAll("iframe"))
+                  .map(f => f.src)
+    """)
 
-    iframes = driver.find_elements(By.TAG_NAME, "iframe")
-
-    for i, f in enumerate(iframes):
-        print(i + 1, f.get_attribute("src"))
+    for i, src in enumerate(iframes):
+        print(i + 1, src)
 
     # =========================
-    # 3️⃣ Links
+    # 3️⃣ Links（JS 抓比較穩）
     # =========================
     print("\n🔗 LINKS:")
 
-    links = driver.find_elements(By.TAG_NAME, "a")
+    links = page.evaluate("""
+        () => Array.from(document.querySelectorAll("a"))
+                  .map(a => a.href)
+                  .filter(h => h && h.includes("dw.com"))
+    """)
 
     seen = set()
     for l in links:
-        href = l.get_attribute("href")
-        if href and "dw.com" in href:
-            if href not in seen:
-                seen.add(href)
-                #print("-", href)
-                if ".pdf" in href:
-                    print(href)
+        if l not in seen:
+            seen.add(l)
+            print("-", l)
 
     # =========================
-    # 4️⃣ JSON fallback（關鍵🔥）
+    # 4️⃣ JSON（最關鍵🔥）
     # =========================
     print("\n📦 TRY NEXT_DATA JSON:")
 
-    try:
-        script = driver.find_element(By.ID, "__NEXT_DATA__").get_attribute("innerHTML")
-        data = json.loads(script)
+    data = page.evaluate("""
+        () => {
+            let el = document.querySelector("#__NEXT_DATA__");
+            return el ? el.innerText : null;
+        }
+    """)
 
-        # 印出結構（你可以再細挖）
-        print("Keys:", data.keys())
+    if data:
+        data = json.loads(data)
+        print("✅ JSON keys:", data.keys())
 
-    except:
-        print("No __NEXT_DATA__ found")
+        # 👉 你真正要的資料通常在這裡
+        try:
+            props = data["props"]["pageProps"]
+            print("✅ pageProps keys:", props.keys())
+        except:
+            print("⚠️ pageProps not found")
 
-finally:
-    driver.quit()
+    else:
+        print("❌ No __NEXT_DATA__ found")
+
+    browser.close()
