@@ -374,10 +374,32 @@ document.addEventListener("DOMContentLoaded", loadDWList);
 
 async function loadDWList() {
     try {
+
+        console.log("🚀 loading DW list...");
+
         const res = await fetch("/api/list_dw");
-        const data = await res.json();
+
+        console.log("📡 response status:", res.status);
+
+        const text = await res.text();   // 👈 先不要直接 json
+        console.log("📦 RAW RESPONSE:", text);
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error("❌ JSON parse failed:", e);
+            return;
+        }
+
+        console.log("✅ PARSED DATA:", data);
 
         const select = document.getElementById("newsSelect");
+        if (!select) {
+            console.error("❌ newsSelect not found in DOM");
+            return;
+        }
+
         select.innerHTML = "";
 
         data.forEach(item => {
