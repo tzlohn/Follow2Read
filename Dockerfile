@@ -1,30 +1,32 @@
 FROM python:3.11-slim
 
-# 安裝 system dependencies
+WORKDIR /app
+
+# system deps for playwright
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
     gnupg \
-    ca-certificates \
-    fonts-liberation \
     libnss3 \
-    libxss1 \
-    libasound2 \
+    libatk1.0-0 \
     libatk-bridge2.0-0 \
-    libgtk-3-0 \
+    libcups2 \
+    libxcomposite1 \
+    libxdamage1 \
+    libxrandr2 \
     libgbm1 \
+    libasound2 \
+    libpangocairo-1.0-0 \
+    libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# install python deps
-WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# install playwright browser
-RUN python -m playwright install chromium
+# install playwright browsers
+RUN playwright install --with-deps chromium
 
-# copy app
 COPY . .
 
-# run
-CMD ["gunicorn", "-b", "0.0.0.0:10000", "app:app"]
+# Render requires $PORT
+CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:$PORT"]
