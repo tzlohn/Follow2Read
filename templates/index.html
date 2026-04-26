@@ -388,9 +388,11 @@ async function startRecording() {
         mediaRecorder.start();
     }
 
-function stopRecording() {
-    if (mediaRecorder) mediaRecorder.stop();
-}
+    stopRec.onclick = () => {
+      mediaRecorder.stop();
+      startRec.disabled = false;
+      stopRec.disabled = true;
+    };
 
 /* ➕ 新增錄音項目 */
 function addRecording(url) {
