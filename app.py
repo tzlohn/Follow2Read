@@ -10,7 +10,18 @@ def home():
 
 @app.route("/api/get_dom", methods=["POST"])
 def get_dom():
-    url = request.json.get("url")
+    return jsonify({
+        "status": "ok",
+        "pdf_url": "https://static.dw.com/downloads/test.pdf"
+    })
+    data = request.get_json(silent=True)
+    if not data or "url" not in data:
+        return jsonify({
+            "status": "error",
+            "message": "No URL provided"
+        }), 400
+
+    url = data["url"]
 
     if not url:
         return jsonify({"status": "error", "message": "No URL provided"}), 400
