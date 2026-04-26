@@ -362,28 +362,7 @@ async function startRecording() {
 
         const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
         const url = URL.createObjectURL(mp3Blob);
-        const li = document.createElement('li');
-
-        const audio = document.createElement('audio');
-        audio.controls = true;
-        audio.src = url;
-
-        // Download 按鈕
-        const downloadBtn = document.createElement('button');
-        downloadBtn.textContent = '⬇ Download';
-        downloadBtn.onclick = () => {
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `recording_${Date.now()}.webm`;
-          a.click();
-        };
-
-        li.appendChild(audio);
-        li.appendChild(document.createElement('br'));
-        li.appendChild(downloadBtn);
-
-        recordList.appendChild(li);
-      };
+    };
 
         mediaRecorder.start();
     }
