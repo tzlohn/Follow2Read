@@ -10,82 +10,82 @@ def home():
 
 @app.route("/api/get_dom", methods=["POST"])
 def get_dom():
-    data = request.get_json(silent=True)
-    if not data or "url" not in data:
-        return jsonify({
-            "status": "error",
-            "message": "No URL provided"
-        }), 400
+    try:
+        data = request.get_json(silent=True)
 
-    url = data["url"]
+        if not data or "url" not in data:
+            return jsonify({
+                "status": "error",
+                "message": "No URL provided"
+            }), 400
 
-    if not url:
-        return jsonify({"status": "error", "message": "No URL provided"}), 400
+        url = data["url"]
 
-    pdf_url = None
+        pdf_url = None
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
 
-        page.goto(url, timeout=60000)
+            page = browser.new_page()
+            page.goto(url, timeout=60000)
 
-        try:
-            page.wait_for_selector("h1", timeout=15000)
-        except:
-            pass
+            page.wait_for_timeout(3000)
 
-        # scroll
-        for _ in range(3):
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            page.wait_for_timeout(2000)
+            # scroll
+            for _ in range(3):
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                page.wait_for_timeout(1500)
 
-        # =========================
-        # 1️⃣ 抓 <a> 裡的 PDF
-        # =========================
-        links = page.evaluate("""
-            () => Array.from(document.querySelectorAll("a"))
-                    .map(a => a.href)
-        """)
+            # =====================
+            # 1. links
+            # =====================
+            links = page.evaluate("""
+                () => Array.from(document.querySelectorAll("a"))
+                        .map(a => a.href)
+            """)
 
-        for l in links:
-            if l and ".pdf" in l:
-                pdf_url = l
-                #print(pdf_url)
-                break
+            for l in links:
+                if l and ".pdf" in l:
+                    pdf_url = l
+                    break
 
-        # =========================
-        # 2️⃣ fallback：__NEXT_DATA__
-        # =========================
-        if not pdf_url:
-            try:
-                data = page.evaluate("""
+            # =====================
+            # 2. fallback JSON
+            # =====================
+            if not pdf_url:
+                raw = page.evaluate("""
                     () => {
-                        let el = document.querySelector("#__NEXT_DATA__");
+                        const el = document.querySelector("#__NEXT_DATA__");
                         return el ? el.innerText : null;
                     }
                 """)
 
-                if data:
-                    data = json.loads(data)
+                if raw:
+                    try:
+                        data = json.loads(raw)
+                        text = json.dumps(data)
 
-                    # 🔥 DW 常藏在這裡
-                    text = json.dumps(data)
-                    import re
-                    match = re.search(r'https://[^"]+\\.pdf', text)
-                    if match:
-                        pdf_url = match.group(0)
+                        match = re.search(r'https://[^"]+\\.pdf', text)
+                        if match:
+                            pdf_url = match.group(0)
 
-            except Exception as e:
-                print("JSON parse error:", e)
+                    except Exception as e:
+                        print("JSON error:", e)
 
-        browser.close()
+            browser.close()
 
-    # =========================
-    # ✅ 統一回傳
-    # =========================
-    pdf_url = r"https://static.dw.com/downloads/76925547/Kurz-und-leicht-Video-Nachrichten-2026-04-24-Manuskript-und-Wortschatz.pdf"
-    return jsonify({
-        "status": "ok",
-        "pdf_url": pdf_url  # 可能是 None
-    })
+        return jsonify({
+            "status": "ok",
+            "pdf_url": pdf_url
+        })
+
+    except Exception as e:
+        print("🔥 SERVER ERROR:", e)
+
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
