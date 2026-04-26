@@ -1,9 +1,13 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify,render_template
 from playwright.sync_api import sync_playwright
 import requests
 from bs4 import BeautifulSoup
 
 app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return render_template("index.html")
 
 @app.route("/api/get_dom", methods=["POST"])
 def get_dom():
