@@ -37,19 +37,6 @@ with sync_playwright() as p:
     print(title)
 
     # =========================
-    # 2️⃣ iframe（直接 JS 抓）
-    # =========================
-    print("\n🎬 IFRAME SOURCES:")
-
-    iframes = page.evaluate("""
-        () => Array.from(document.querySelectorAll("iframe"))
-                  .map(f => f.src)
-    """)
-
-    for i, src in enumerate(iframes):
-        print(i + 1, src)
-
-    # =========================
     # 3️⃣ Links（JS 抓比較穩）
     # =========================
     print("\n🔗 LINKS:")
@@ -69,7 +56,7 @@ with sync_playwright() as p:
     # =========================
     # 4️⃣ JSON（最關鍵🔥）
     # =========================
-    print("\n📦 TRY NEXT_DATA JSON:")
+
 
     data = page.evaluate("""
         () => {
