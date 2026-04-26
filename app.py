@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify,render_template
 from playwright.sync_api import sync_playwright
 import requests
 from bs4 import BeautifulSoup
+from yt_dlp import YoutubeDL
 
 app = Flask(__name__)
 
@@ -62,23 +63,23 @@ def get_dom():
         # 2️⃣ YouTube search
         # =========================
         query = title.replace(" ", "+")
-        yt_url = f"https://www.youtube.com/results?search_query={query}"
+        ydl_opts = {
+            'quiet': True,
+            'skip_download': True
+        }
 
-        headers = {"User-Agent": "Mozilla/5.0"}
-        r = requests.get(yt_url, headers=headers)
-        soup = BeautifulSoup(r.text, "html.parser")
+        with YoutubeDL(ydl_opts) as ydl:
+            # ytsearch1 = 只抓第一個結果
+            results = ydl.extract_info(f"ytsearch1:{query}", download=False)
 
-        for link in soup.find_all("a"):
-            href = link.get("href")
-            if href and "/watch?v=" in href:
-                video_id = href.split("v=")[1].split("&")[0]
-                break
+            video = results['entries'][0]
+            video_url = f"https://www.youtube.com/watch?v={video['id']}"
 
         return jsonify({
             "status": "ok",
             "title": title,
             "pdf_url": pdf_url,
-            "video_id": video_id
+            "video_id": video_url
         })
 
     except Exception as e:

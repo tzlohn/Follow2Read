@@ -201,9 +201,9 @@
         });
 
         const data = await res.json();
-
-        if (data.video_id) {
-            player.loadVideoById(data.video_id);
+        alert(data.video_url)
+        if (data.video_url) {
+            player.loadVideoByUrl(data.video_url);
         }
 
         if (data.pdf_url) {
