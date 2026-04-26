@@ -139,8 +139,8 @@
         }
         #newsSelect {
             font-size: 2em;
-            padding: 12px;
-            height: 40px;
+            padding: 6px;
+            height: 30px;
         }
     </style>
 </head>
@@ -191,6 +191,10 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
+<!-- ========================= -->
+<!-- 🎧 FFmpeg WASM -->
+<!-- ========================= -->
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
 
 <script>
 let player;
@@ -243,6 +247,22 @@ function recordTime() {
 
     document.getElementById("timestamps").appendChild(container);
 }
+
+/* =========================
+   🎧 FFmpeg setup
+========================= */
+const { createFFmpeg, fetchFile } = FFmpeg;
+
+const ffmpeg = createFFmpeg({ log: false });
+let ffmpegLoaded = false;
+
+async function loadFFmpeg() {
+    if (!ffmpegLoaded) {
+        await ffmpeg.load();
+        ffmpegLoaded = true;
+    }
+}
+
 
 /* 🎤 錄音 + 波形 */
 let mediaRecorder;
@@ -303,18 +323,44 @@ async function startRecording() {
 
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-    mediaRecorder.onstop = () => {
+    mediaRecorder.onstop = async () => {
         cancelAnimationFrame(animationId);
         canvas.style.display = "none";
 
-        const blob = new Blob(audioChunks, { type: "audio/webm" });
-        const url = URL.createObjectURL(blob);
+        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
 
-        addRecording(url);
+        const webmUrl = URL.createObjectURL(webmBlob);
+        addRecording(webmUrl);
+
+        // =========================
+        // 🎧 MP3 export（新增）
+        // =========================
+        await loadFFmpeg();
+
+        ffmpeg.FS("writeFile", "input.webm", await fetchFile(webmBlob));
+
+        await ffmpeg.run(
+            "-i",
+            "input.webm",
+            "-b:a",
+            "192k",
+            "output.mp3"
+        );
+
+        const mp3Data = ffmpeg.FS("readFile", "output.mp3");
+
+        const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
+        const mp3Url = URL.createObjectURL(mp3Blob);
+
+        // ➜ 自動下載 mp3
+        const a = document.createElement("a");
+        a.href = mp3Url;
+        a.download = `recording_${recordingCount}.mp3`;
+        a.click();
     };
 
-    mediaRecorder.start();
-}
+        mediaRecorder.start();
+    }
 
 function stopRecording() {
     if (mediaRecorder) mediaRecorder.stop();
