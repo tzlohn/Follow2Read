@@ -251,15 +251,29 @@ function recordTime() {
 /* =========================
    🎧 FFmpeg setup
 ========================= */
-const { createFFmpeg, fetchFile } = FFmpeg;
-
-const ffmpeg = createFFmpeg({ log: false });
+let ffmpeg = null;
+let fetchFileFunc = null;
 let ffmpegLoaded = false;
 
 async function loadFFmpeg() {
-    if (!ffmpegLoaded) {
+    if (ffmpegLoaded) return;
+
+    try {
+        const FFmpegModule = window.FFmpeg;
+        if (!FFmpegModule) throw new Error("FFmpeg not loaded");
+
+        const { createFFmpeg, fetchFile } = FFmpegModule;
+
+        ffmpeg = createFFmpeg({ log: false });
+        fetchFileFunc = fetchFile;
+
         await ffmpeg.load();
         ffmpegLoaded = true;
+
+        console.log("✅ FFmpeg loaded");
+    } catch (e) {
+        console.warn("⚠️ FFmpeg failed:", e);
+        ffmpegLoaded = false;
     }
 }
 
@@ -325,38 +339,45 @@ async function startRecording() {
 
     mediaRecorder.onstop = async () => {
         cancelAnimationFrame(animationId);
-        canvas.style.display = "none";
+        document.getElementById("waveCanvas").style.display = "none";
 
         const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
-
         const webmUrl = URL.createObjectURL(webmBlob);
+
         addRecording(webmUrl);
 
+        // ✅ 先確保錄音一定正常
+        audioChunks = [];
+
         // =========================
-        // 🎧 MP3 export（新增）
+        // 🔥 MP3（安全模式）
         // =========================
-        await loadFFmpeg();
+        try {
+            await loadFFmpeg();
 
-        ffmpeg.FS("writeFile", "input.webm", await fetchFile(webmBlob));
+            if (!ffmpegLoaded) return; // ❗ ffmpeg壞就跳過
 
-        await ffmpeg.run(
-            "-i",
-            "input.webm",
-            "-b:a",
-            "192k",
-            "output.mp3"
-        );
+            ffmpeg.FS("writeFile", "input.webm", await fetchFileFunc(webmBlob));
 
-        const mp3Data = ffmpeg.FS("readFile", "output.mp3");
+            await ffmpeg.run(
+                "-i", "input.webm",
+                "-b:a", "192k",
+                "output.mp3"
+            );
 
-        const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
-        const mp3Url = URL.createObjectURL(mp3Blob);
+            const mp3Data = ffmpeg.FS("readFile", "output.mp3");
 
-        // ➜ 自動下載 mp3
-        const a = document.createElement("a");
-        a.href = mp3Url;
-        a.download = `recording_${recordingCount}.mp3`;
-        a.click();
+            const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
+            const mp3Url = URL.createObjectURL(mp3Blob);
+
+            const a = document.createElement("a");
+            a.href = mp3Url;
+            a.download = `recording_${recordingCount}.mp3`;
+            a.click();
+
+        } catch (e) {
+            console.warn("⚠️ MP3 轉換失敗:", e);
+        }
     };
 
         mediaRecorder.start();
