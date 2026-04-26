@@ -12,70 +12,51 @@ def home():
 
 @app.route("/api/list_dw", methods=["GET"])
 def list_dw():
-    url = "https://learngerman.dw.com/de/kurz-und-leicht/s-69137519"
+    try:
+        url = "https://learngerman.dw.com/de/kurz-und-leicht/s-69137519"
 
-    results = []
+        results = []
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True,
-            args=["--no-sandbox", "--disable-dev-shm-usage"]
-        )
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
 
-        page = browser.new_page()
-        page.goto(url, timeout=60000)
+            page = browser.new_page()
+            page.goto(url, timeout=60000)
 
-        page.wait_for_timeout(3000)
+            page.wait_for_timeout(5000)
 
-        # scroll（DW 很重要）
-        for _ in range(3):
-            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
-            page.wait_for_timeout(1500)
+            items = page.evaluate("""
+                () => Array.from(document.querySelectorAll("a"))
+                    .map(a => a.href)
+                    .filter(h => h && h.includes("kurz-und-leicht"))
+            """)
 
-        # 🔥 抓所有文章連結 + 標題
-        items = page.evaluate("""
-            () => {
-                return Array.from(document.querySelectorAll("a"))
-                    .map(a => ({
-                        href: a.href,
-                        text: a.innerText
-                    }))
-                    .filter(x =>
-                        x.href.includes("/de/") &&
-                        x.href.includes("kurz-und-leicht-video") &&
-                        x.text.length > 5
-                    );
-            }
-        """)
+            browser.close()
 
-        browser.close()
+        for i in items:
+            import re
+            match = re.search(r'/(\d{8})-', i)
 
-    # 🔥 整理成 {date, url}
+            if match:
+                raw = match.group(1)
+                date = f"{raw[:2]}.{raw[2:4]}.{raw[4:]}"
 
-    for item in items:
-        url = item["href"]
-        match = re.search(r'/(\d{8})-', url)
-        if match:
-            count = count+1
-            raw = match.group(1)  # 06042026
-            # 👉 轉成 06.04.2026
-            date = f"{raw[0:2]}.{raw[2:4]}.{raw[4:8]}"
+                results.append({
+                    "date": date,
+                    "url": i
+                })
 
-            results.append({
-                "date": date,
-                "url": url
-            })
-        
+        return jsonify(results)
 
-    # 去重
-    seen = set()
-    unique = []
-    for r in results:
-        if r["url"] not in seen:
-            seen.add(r["url"])
-            unique.append(r)
-
-    return jsonify(unique)
+    except Exception as e:
+        print("🔥 ERROR in list_dw:", str(e))
+        return jsonify({
+            "status": "error",
+            "message": str(e)
+        }), 500
 
 @app.route("/api/get_dom", methods=["POST"])
 def get_dom():
