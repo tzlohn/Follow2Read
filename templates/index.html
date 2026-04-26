@@ -222,7 +222,11 @@ function recordTime() {
 
     jumpBtn.onclick = () => {
         player.seekTo(time, true);
-        player.playVideo();
+
+        // ⏱ 延遲 1 秒再播放
+        setTimeout(() => {
+            player.playVideo();
+        }, 1000);
     };
 
     // ⏸ 暫停按鈕
