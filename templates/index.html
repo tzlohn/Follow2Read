@@ -143,7 +143,6 @@
             height: 40px;
         }
     </style>
-    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
 </head>
 
 <body>
@@ -194,17 +193,6 @@
 <script src="https://www.youtube.com/iframe_api"></script>
 
 <script>
-const { createFFmpeg, fetchFile } = FFmpeg;
-const ffmpeg = createFFmpeg({ log: false });
-
-let ffmpegLoaded = false;
-async function loadFFmpeg() {
-    if (!ffmpegLoaded) {
-        await ffmpeg.load();
-        ffmpegLoaded = true;
-    }
-}
-
 let player;
 
 function onYouTubeIframeAPIReady() {
@@ -315,40 +303,14 @@ async function startRecording() {
 
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
-    mediaRecorder.onstop = async () => {
+    mediaRecorder.onstop = () => {
         cancelAnimationFrame(animationId);
         canvas.style.display = "none";
 
-        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
 
-        const webmUrl = URL.createObjectURL(webmBlob);
-        addRecording(webmUrl);
-
-        // =========================
-        // 🎧 MP3 export（新增）
-        // =========================
-        await loadFFmpeg();
-
-        ffmpeg.FS("writeFile", "input.webm", await fetchFile(webmBlob));
-
-        await ffmpeg.run(
-            "-i",
-            "input.webm",
-            "-b:a",
-            "192k",
-            "output.mp3"
-        );
-
-        const mp3Data = ffmpeg.FS("readFile", "output.mp3");
-
-        const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
-        const mp3Url = URL.createObjectURL(mp3Blob);
-
-        // ➜ 自動下載 mp3
-        const a = document.createElement("a");
-        a.href = mp3Url;
-        a.download = `recording_${recordingCount}.mp3`;
-        a.click();
+        addRecording(url);
     };
 
     mediaRecorder.start();
