@@ -197,6 +197,10 @@
             body: JSON.stringify({ url })
         });
 
+        console.log("STATUS:", res.status);
+        const text = await res.text();
+        console.log("RAW RESPONSE:", text);
+
         const data = await res.json();
 
         if (data.pdf_url) {
