@@ -13,7 +13,13 @@ def home():
 def get_dom():
     try:
         data = request.get_json(silent=True)
-        url = data.get("url")
+        if not data or "url" not in data:
+            return jsonify({
+                "status": "error",
+                "message": "No URL provided"
+            }), 400
+
+        url = data["url"]
 
         title = None
         pdf_url = None
@@ -23,12 +29,20 @@ def get_dom():
         # 1️⃣ Playwright 抓 title + PDF
         # =========================
         with sync_playwright() as p:
-            browser = p.chromium.launch(headless=True)
+            browser = p.chromium.launch(
+                headless=True,
+                args=["--no-sandbox", "--disable-dev-shm-usage"]
+            )
+
             page = browser.new_page()
 
             page.goto(url, timeout=60000)
             page.wait_for_timeout(3000)
 
+            # scroll
+            for _ in range(3):
+                page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                page.wait_for_timeout(1500)
             title = page.title()
 
             # 抓 PDF
