@@ -51,15 +51,21 @@ def list_dw():
         browser.close()
 
     # 🔥 整理成 {date, url}
-    import re
 
     for item in items:
-        match = re.search(r'(\\d{2}\\.\\d{2}\\.\\d{4})', item["text"])
+        url = item["href"]
+        match = re.search(r'/(\d{8})-', url)
         if match:
+            count = count+1
+            raw = match.group(1)  # 06042026
+            # 👉 轉成 06.04.2026
+            date = f"{raw[0:2]}.{raw[2:4]}.{raw[4:8]}"
+
             results.append({
-                "date": match.group(1),
-                "url": item["href"]
+                "date": date,
+                "url": url
             })
+        
 
     # 去重
     seen = set()
@@ -117,7 +123,7 @@ def get_dom():
                 if l and ".pdf" in l:
                     pdf_url = l
                     break
-
+            
             browser.close()
 
         # =========================
@@ -156,4 +162,5 @@ def get_dom():
         })
 
 if __name__ == "__main__":
+    list_dw()
     app.run(host="0.0.0.0", port=10000)
