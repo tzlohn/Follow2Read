@@ -115,6 +115,28 @@
             border: 1px solid #ccc;
             border-radius: 6px;
         }        
+        .big-btn {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* 時間點按鈕容器 */
+        .time-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        /* 小控制按鈕 */
+        .small-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
     </style>
 </head>
 
@@ -133,7 +155,7 @@
         <div class="left-top">
             <div id="player"></div>
 
-            <button onclick="recordTime()">記錄時間</button>
+            <button class="big-btn" onclick="recordTime()">⏱️ 記錄時間</button>
             <div class="timestamps" id="timestamps"></div>
         </div>
 
@@ -183,12 +205,32 @@ function extractVideoID(url) {
 function recordTime() {
     const time = Math.floor(player.getCurrentTime());
 
-    const btn = document.createElement("button");
-    btn.innerText = "跳到 " + time + " 秒";
+    const container = document.createElement("div");
+    container.className = "time-item";
 
-    btn.onclick = () => player.seekTo(time, true);
+    // ▶ 跳轉按鈕
+    const jumpBtn = document.createElement("button");
+    jumpBtn.innerText = "▶ " + time + "s";
+    jumpBtn.className = "small-btn";
 
-    document.getElementById("timestamps").appendChild(btn);
+    jumpBtn.onclick = () => {
+        player.seekTo(time, true);
+        player.playVideo();
+    };
+
+    // ⏸ 暫停按鈕
+    const pauseBtn = document.createElement("button");
+    pauseBtn.innerText = "⏸";
+    pauseBtn.className = "small-btn";
+
+    pauseBtn.onclick = () => {
+        player.pauseVideo();
+    };
+
+    container.appendChild(jumpBtn);
+    container.appendChild(pauseBtn);
+
+    document.getElementById("timestamps").appendChild(container);
 }
 
 /* 🎤 錄音 + 波形 */
