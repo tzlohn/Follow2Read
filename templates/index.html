@@ -92,6 +92,29 @@
             background: #111;
             display: none;
         }
+
+        .record-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* 小波形 */
+        #waveCanvas {
+            width: 150px;
+            height: 40px;
+            background: #111;
+            display: none;
+            border-radius: 4px;
+        }
+
+        /* 錄音清單 */
+        .record-item {
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }        
     </style>
 </head>
 
@@ -116,13 +139,17 @@
 
         <div class="left-bottom">
             <h3>錄音功能</h3>
-            <button onclick="startRecording()">開始錄音</button>
-            <button onclick="stopRecording()">停止錄音</button>
 
-            <!-- 🎤 波形 -->
-            <canvas id="waveCanvas"></canvas>
+            <div class="record-bar">
+                <button onclick="startRecording()">開始</button>
+                <button onclick="stopRecording()">停止</button>
 
-            <audio id="audioPlayback" controls></audio>
+                <!-- 小波形 -->
+                <canvas id="waveCanvas"></canvas>
+            </div>
+
+            <!-- 🎧 錄音列表 -->
+            <div id="recordingsList"></div>
         </div>
 
     </div>
@@ -171,20 +198,19 @@ let audioContext;
 let analyser;
 let dataArray;
 let animationId;
+let recordingCount = 0;
 
 async function startRecording() {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-    // 🎧 Web Audio setup
     audioContext = new AudioContext();
     const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
     source.connect(analyser);
 
-    analyser.fftSize = 2048;
+    analyser.fftSize = 1024;
     dataArray = new Uint8Array(analyser.frequencyBinCount);
 
-    // 🎨 Canvas
     const canvas = document.getElementById("waveCanvas");
     canvas.style.display = "block";
     const ctx = canvas.getContext("2d");
@@ -196,7 +222,7 @@ async function startRecording() {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        ctx.lineWidth = 2;
+        ctx.lineWidth = 1.5;
         ctx.strokeStyle = "#00ff88";
 
         ctx.beginPath();
@@ -214,14 +240,13 @@ async function startRecording() {
             x += sliceWidth;
         }
 
-        ctx.lineTo(canvas.width, canvas.height / 2);
         ctx.stroke();
     }
 
     draw();
 
-    // 🎤 MediaRecorder
     mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
 
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
@@ -229,18 +254,37 @@ async function startRecording() {
         cancelAnimationFrame(animationId);
         canvas.style.display = "none";
 
-        const audioBlob = new Blob(audioChunks);
-        document.getElementById("audioPlayback").src =
-            URL.createObjectURL(audioBlob);
+        const blob = new Blob(audioChunks, { type: "audio/webm" });
+        const url = URL.createObjectURL(blob);
 
-        audioChunks = [];
+        addRecording(url);
     };
 
     mediaRecorder.start();
 }
 
 function stopRecording() {
-    mediaRecorder.stop();
+    if (mediaRecorder) mediaRecorder.stop();
+}
+
+/* ➕ 新增錄音項目 */
+function addRecording(url) {
+    recordingCount++;
+
+    const container = document.getElementById("recordingsList");
+
+    const div = document.createElement("div");
+    div.className = "record-item";
+
+    div.innerHTML = `
+        <b>錄音 ${recordingCount}</b><br>
+        <audio controls src="${url}"></audio><br>
+        <a href="${url}" download="recording_${recordingCount}.webm">
+            下載
+        </a>
+    `;
+
+    container.prepend(div);
 }
 
 /* 📄 PDF + YouTube */
