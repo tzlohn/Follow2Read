@@ -2,60 +2,68 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>DW DOM Viewer</title>
+    <title>Interactive App</title>
 
     <style>
         body {
-            font-family: Arial;
             margin: 0;
+            font-family: Arial;
         }
 
-        .top {
+        /* 上方 URL 輸入 */
+        .top-bar {
             padding: 10px;
             background: #f0f0f0;
         }
 
-        .top input {
-            width: 70%;
+        .top-bar input {
+            width: 80%;
             padding: 8px;
         }
 
-        .top button {
+        .top-bar button {
             padding: 8px;
         }
 
+        /* 主體 */
         .container {
             display: flex;
             height: calc(100vh - 60px);
         }
 
-        .left, .right {
+        /* 左右 */
+        .left {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ccc;
+        }
+
+        .right {
             width: 50%;
             padding: 10px;
-            overflow: auto;
         }
 
-        .box {
-            border: 1px solid #ccc;
+        /* 左邊上下 */
+        .left-top {
+            flex: 2;
             padding: 10px;
-            margin-bottom: 10px;
         }
 
-        #htmlBox {
-            white-space: pre-wrap;
-            background: #111;
-            color: #0f0;
-            height: 65vh;
-            overflow: auto;
-            font-size: 12px;
+        .left-bottom {
+            flex: 1;
+            padding: 10px;
+            border-top: 1px solid #ccc;
         }
 
-        a {
-            word-break: break-all;
+        iframe {
+            width: 100%;
+            height: 300px;
         }
 
-        button {
-            cursor: pointer;
+        .timestamps button {
+            display: block;
+            margin: 5px 0;
         }
     </style>
 </head>
@@ -63,9 +71,10 @@
 <body>
 
 <!-- 🔝 URL 輸入 -->
-<div class="top">
-    <input id="urlInput" placeholder="貼上 DW URL">
-    <button onclick="analyze()">解析 DOM</button>
+<div class="top-bar">
+    <input id="urlInput" placeholder="貼上 YouTube 或 DW URL">
+    <button onclick="loadVideo()">載入影片</button>
+    <button onclick="getPDF()">抓 PDF</button>
 </div>
 
 <div class="container">
@@ -73,88 +82,137 @@
     <!-- 左 -->
     <div class="left">
 
-        <div class="box">
-            <h3>PDF 下載</h3>
-            <div id="pdfBox">尚未解析</div>
+        <!-- 左上 -->
+        <div class="left-top">
+            <div id="player"></div>
+
+            <button onclick="recordTime()">記錄時間</button>
+
+            <div class="timestamps" id="timestamps"></div>
         </div>
 
-        <div class="box">
-            <button onclick="openPDF()">開啟 PDF</button>
+        <!-- 左下（錄音） -->
+        <div class="left-bottom">
+            <h3>錄音功能</h3>
+            <button onclick="startRecording()">開始錄音</button>
+            <button onclick="stopRecording()">停止錄音</button>
+            <audio id="audioPlayback" controls></audio>
         </div>
 
     </div>
 
     <!-- 右 -->
     <div class="right">
-
-        <div class="box">
-            <h3>F12 DOM（Playwright）</h3>
-            <div id="htmlBox">尚未載入</div>
-        </div>
-
+        <h3>右側內容區（預留）</h3>
     </div>
 
 </div>
 
+<!-- YouTube API -->
+<script src="https://www.youtube.com/iframe_api"></script>
+
 <script>
+    let player;
 
-let pdfUrl = "";
-let htmlData = "";
+    function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+            height: '300',
+            width: '100%',
+            videoId: ''
+        });
+    }
 
-/* 🔥 主功能 */
-async function analyze() {
+    function extractVideoID(url) {
+        const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&]+)/;
+        const match = url.match(regExp);
+        return match ? match[1] : null;
+    }
+
+    function loadVideo() {
+        const url = document.getElementById("urlInput").value;
+        const videoId = extractVideoID(url);
+
+        if (videoId) {
+            player.loadVideoById(videoId);
+        } else {
+            alert("無效的 YouTube URL");
+        }
+    }
+
+    function recordTime() {
+        const time = Math.floor(player.getCurrentTime());
+
+        const btn = document.createElement("button");
+        btn.innerText = "跳到 " + time + " 秒";
+
+        btn.onclick = () => {
+            player.seekTo(time, true);
+        };
+
+        document.getElementById("timestamps").appendChild(btn);
+    }
+
+    // 🎤 錄音功能
+    let mediaRecorder;
+    let audioChunks = [];
+
+    async function startRecording() {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = event => {
+            audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+            const audioBlob = new Blob(audioChunks);
+            const audioUrl = URL.createObjectURL(audioBlob);
+
+            document.getElementById("audioPlayback").src = audioUrl;
+            audioChunks = [];
+        };
+
+        mediaRecorder.start();
+    }
+
+    function stopRecording() {
+        mediaRecorder.stop();
+    }
+
+    async function getPDF() {
     const url = document.getElementById("urlInput").value;
-
-    document.getElementById("pdfBox").innerText = "loading...";
-    document.getElementById("htmlBox").innerText = "loading...";
+    
+    if (!url) {
+        alert("請先貼上 URL");
+        return;
+    }
 
     try {
         const res = await fetch("/api/get_dom", {
             method: "POST",
-            headers: {"Content-Type": "application/json"},
+            headers: {
+                "Content-Type": "application/json"
+            },
             body: JSON.stringify({ url })
         });
 
         const data = await res.json();
 
-        console.log("RESPONSE:", data);
+        if (data.pdf_url) {
+            // ✅ 彈出視窗
+            alert("找到 PDF：\n" + data.pdf_url);
 
-        if (data.status !== "ok") {
-            alert("Error: " + data.message);
-            return;
-        }
-
-        // PDF
-        pdfUrl = data.pdf_url;
-
-        if (pdfUrl) {
-            document.getElementById("pdfBox").innerHTML =
-                `<a href="${pdfUrl}" target="_blank">${pdfUrl}</a>`;
+            // 或開新分頁（更好用）
+            window.open(data.pdf_url, "_blank");
         } else {
-            document.getElementById("pdfBox").innerText = "找不到 PDF";
+            alert("找不到 PDF");
         }
-
-        // DOM
-        htmlData = data.html;
-
-        document.getElementById("htmlBox").innerText =
-            htmlData.substring(0, 80000); // 避免爆 UI
 
     } catch (err) {
-        alert("fetch error: " + err);
+        alert("發生錯誤：" + err);
     }
-}
-
-
-/* 📄 打開 PDF */
-function openPDF() {
-    if (!pdfUrl) {
-        alert("沒有 PDF");
-        return;
     }
-    window.open(pdfUrl, "_blank");
-}
-
 </script>
 
 </body>
