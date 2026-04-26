@@ -201,6 +201,7 @@
         });
 
         const data = await res.json();
+        console.log(data);
 
         alert(data.pdf_url)
         if (data.pdf_url) {
@@ -213,7 +214,7 @@
             player.loadVideoByUrl(data.video_url);
         }
 
-        if (!data.video_id && !data.pdf_url) {
+        if (!data.video_url && !data.pdf_url) {
             alert("沒有找到內容");
         }
     }
