@@ -283,30 +283,46 @@ async function startRecording() {
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
     mediaRecorder.onstop = async () => {
-        //const blob = new Blob(chunks, { type: 'audio/webm' });
-        //const url = URL.createObjectURL(blob);
-        const blob = new Blob(chunks);
-        const arrayBuffer = await blob.arrayBuffer();
-        const audioContext = new AudioContext();
-        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        cancelAnimationFrame(animationId);
+        document.getElementById("waveCanvas").style.display = "none";
 
-        const samples = audioBuffer.getChannelData(0); // 單聲道
-        const mp3encoder = new lamejs.Mp3Encoder(1, audioBuffer.sampleRate, 128);
+        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const webmUrl = URL.createObjectURL(webmBlob);
 
-        let mp3Data = [];
-        const sampleBlockSize = 1152;
+        addRecording(webmUrl);
 
-        for (let i = 0; i < samples.length; i += sampleBlockSize) {
-          const sampleChunk = samples.subarray(i, i + sampleBlockSize);
-          const mp3buf = mp3encoder.encodeBuffer(convertFloatToInt16(sampleChunk));
-          if (mp3buf.length > 0) mp3Data.push(mp3buf);
+        // ✅ 先確保錄音一定正常
+        audioChunks = [];
+
+        // =========================
+        // 🔥 MP3（安全模式）
+        // =========================
+        try {
+            await loadFFmpeg();
+
+            if (!ffmpegLoaded) return; // ❗ ffmpeg壞就跳過
+
+            ffmpeg.FS("writeFile", "input.webm", await fetchFileFunc(webmBlob));
+
+            await ffmpeg.run(
+                "-i", "input.webm",
+                "-b:a", "192k",
+                "output.mp3"
+            );
+
+            const mp3Data = ffmpeg.FS("readFile", "output.mp3");
+
+            const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
+            const mp3Url = URL.createObjectURL(mp3Blob);
+
+            const a = document.createElement("a");
+            a.href = mp3Url;
+            a.download = `recording_${recordingCount}.mp3`;
+            a.click();
+
+        } catch (e) {
+            console.warn("⚠️ MP3 轉換失敗:", e);
         }
-
-        const mp3buf = mp3encoder.flush();
-        if (mp3buf.length > 0) mp3Data.push(mp3buf);
-
-        const mp3Blob = new Blob(mp3Data, { type: 'audio/mp3' });
-        const url = URL.createObjectURL(mp3Blob);
     };
 
         mediaRecorder.start();
