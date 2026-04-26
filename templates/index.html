@@ -200,12 +200,21 @@
             body: JSON.stringify({ url })
         });
 
-        const data = await res.json();
+        console.log("RAW:", text);
+
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            alert("後端不是 JSON");
+            return;
+        }
+
         alert(data.video_url)
         if (data.video_url) {
             player.loadVideoByUrl(data.video_url);
         }
-
+        alert(data.pdf_url)
         if (data.pdf_url) {
             document.getElementById("pdfViewer").src =
                 "https://docs.google.com/gview?url=" + data.pdf_url + "&embedded=true";
