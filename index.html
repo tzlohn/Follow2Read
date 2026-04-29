@@ -70,7 +70,9 @@
       <div class="right-top">
         <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
           <h2 style="margin:0;">PDF Viewer</h2>
-          <input type="file" id="pdfUpload" accept="application/pdf">
+          <div style="font-size:14px; color:#666;">
+            Loaded PDF: script.pdf
+          </div>
         </div>
         <iframe id="pdfViewer"></iframe>
       </div>
@@ -349,13 +351,26 @@
     };
 
     // PDF 上傳
-    document.getElementById('pdfUpload').addEventListener('change', function () {
-      const file = this.files[0];
-      if (file) {
-        const url = URL.createObjectURL(file);
-        document.getElementById('pdfViewer').src = url;
-      }
-    });
+    //document.getElementById('pdfUpload').addEventListener('change', function () {
+    //  const file = this.files[0];
+    //  if (file) {
+    //    const url = URL.createObjectURL(file);
+    //    document.getElementById('pdfViewer').src = url;
+    //  }
+    //});
+
+    // =========================
+    // 📄 固定載入伺服器 PDF
+    // =========================
+    function loadFixedPDF() {
+      const pdfViewer = document.getElementById('pdfViewer');
+
+      // 👉 你的 PDF 路徑（可改）
+      pdfViewer.src = "./script.pdf";
+    }
+
+// 頁面載入時執行
+window.addEventListener("DOMContentLoaded", loadFixedPDF);
 
     // 字典
     function getWord() {
