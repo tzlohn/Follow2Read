@@ -391,9 +391,6 @@ async function startRecording() {
         const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
         const webmUrl = URL.createObjectURL(webmBlob);
 
-        // Add recording to UI list
-        addRecording(webmUrl);
-
         // Save recorded chunks, then attempt MP3 conversion
         audioChunks = [];
 
@@ -401,11 +398,16 @@ async function startRecording() {
         // 🔥 MP3 Conversion (Safe Mode)
         // Converts WebM to MP3 if FFmpeg is available
         // =========================
+        let mp3Url = null;
         try {
             await loadFFmpeg();
 
             // Skip if FFmpeg is unavailable
-            if (!ffmpegLoaded) return;
+            if (!ffmpegLoaded) {
+                // If MP3 conversion fails, fall back to WebM
+                addRecording(webmUrl, false);
+                return;
+            }
 
             // Write WebM file to FFmpeg filesystem
             ffmpeg.FS("writeFile", "input.webm", await fetchFileFunc(webmBlob));
@@ -421,7 +423,10 @@ async function startRecording() {
             const mp3Data = ffmpeg.FS("readFile", "output.mp3");
 
             const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
-            const mp3Url = URL.createObjectURL(mp3Blob);
+            mp3Url = URL.createObjectURL(mp3Blob);
+
+            // Add recording with MP3 URL
+            addRecording(mp3Url, true);
 
             // Automatically download MP3 file
             const a = document.createElement("a");
@@ -431,6 +436,8 @@ async function startRecording() {
 
         } catch (e) {
             console.warn("⚠️ MP3 conversion failed:", e);
+            // Fall back to WebM if MP3 conversion fails
+            addRecording(webmUrl, false);
         }
     };
 
@@ -443,7 +450,8 @@ function stopRecording() {
 }
 
 // Add a new recording to the recordings list with playback and download options
-function addRecording(url) {
+// isMp3: boolean indicating whether the URL is MP3 or WebM
+function addRecording(url, isMp3 = false) {
     recordingCount++;
 
     const container = document.getElementById("recordingsList");
@@ -451,11 +459,15 @@ function addRecording(url) {
     const div = document.createElement("div");
     div.className = "record-item";
 
+    // Use appropriate file extension based on format
+    const fileExtension = isMp3 ? "mp3" : "webm";
+    const formatLabel = isMp3 ? "MP3" : "WebM";
+
     div.innerHTML = `
         <b>Recording ${recordingCount}</b><br>
         <audio controls src="${url}"></audio><br>
-        <a href="${url}" download="recording_${recordingCount}.webm">
-            Download
+        <a href="${url}" download="recording_${recordingCount}.${fileExtension}">
+            Download (${formatLabel})
         </a>
     `;
 
