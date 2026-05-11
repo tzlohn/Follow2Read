@@ -4,3 +4,5 @@ beautifulsoup4==4.12.3
 requests==2.32.3
 lxml==5.2.2
 gunicorn==21.2.0
+pydub==0.25.1
+ffmpeg-python==0.2.0

@@ -1,8 +1,11 @@
-from flask import Flask, request, jsonify,render_template
+from flask import Flask, request, jsonify, render_template, send_file
 from playwright.sync_api import sync_playwright
 import requests
-from bs4 import BeautifulSoup
 import re
+import os
+import uuid
+import io
+from pydub import AudioSegment
 
 app = Flask(__name__)
 
@@ -37,7 +40,6 @@ def list_dw():
             browser.close()
 
         for i in items:
-            import re
             match = re.search(r'/(\d{8})-', i)
 
             if match:
@@ -72,7 +74,6 @@ def get_dom():
 
         title = None
         pdf_url = None
-        video_id = None
 
         # =========================
         # 1️⃣ Playwright 抓 title + PDF
@@ -125,8 +126,7 @@ def get_dom():
         matches = re.findall(r"watch\?v=(\S{11})", res.text)
 
         if matches:
-            video_id = matches[0]
-            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            video_url = f"https://www.youtube.com/watch?v={matches[0]}"
 
         return jsonify({
             "status": "ok",
@@ -141,6 +141,35 @@ def get_dom():
             "status": "error",
             "message": str(e)
         })
+
+@app.route('/api/convert_audio', methods=['POST'])
+def convert_audio():
+    try:
+        # Get the uploaded audio file from the browser
+        audio_file = request.files['audio']
+
+        # Save WebM temporarily for conversion
+        temp_filename = f"temp_{uuid.uuid4()}.webm"
+        audio_file.save(temp_filename)
+
+        # Convert to MP3 in memory
+        audio = AudioSegment.from_file(temp_filename, format="webm")
+        mp3_io = io.BytesIO()
+        audio.export(mp3_io, format="mp3", bitrate="192k")
+        mp3_io.seek(0)
+
+        # Remove temporary WebM file
+        os.remove(temp_filename)
+
+        return send_file(
+            mp3_io,
+            mimetype="audio/mpeg",
+            as_attachment=True,
+            download_name="recording.mp3"
+        )
+
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 if __name__ == "__main__":
     list_dw()

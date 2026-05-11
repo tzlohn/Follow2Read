@@ -218,10 +218,6 @@
 </div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<!-- ========================= -->
-<!-- 🎧 FFmpeg WASM -->
-<!-- ========================= -->
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
 
 <script>
 // Global YouTube player instance
@@ -282,38 +278,6 @@ function recordTime() {
 
     document.getElementById("timestamps").appendChild(container);
 }
-
-/* =========================
-   🎧 FFmpeg setup
-   Handles MP3 conversion of recorded audio
-========================= */
-let ffmpeg = null; // FFmpeg instance
-let fetchFileFunc = null; // Function to fetch files for FFmpeg
-let ffmpegLoaded = false; // Flag to track if FFmpeg is ready
-
-// Load FFmpeg library asynchronously
-async function loadFFmpeg() {
-    if (ffmpegLoaded) return;
-
-    try {
-        const FFmpegModule = window.FFmpeg;
-        if (!FFmpegModule) throw new Error("FFmpeg not loaded");
-
-        const { createFFmpeg, fetchFile } = FFmpegModule;
-
-        ffmpeg = createFFmpeg({ log: false });
-        fetchFileFunc = fetchFile;
-
-        await ffmpeg.load();
-        ffmpegLoaded = true;
-
-        console.log("✅ FFmpeg loaded");
-    } catch (e) {
-        console.warn("⚠️ FFmpeg failed:", e);
-        ffmpegLoaded = false;
-    }
-}
-
 
 /* 🎤 Audio Recording + Waveform Visualization */
 let mediaRecorder; // Handles recording from microphone
@@ -391,54 +355,38 @@ async function startRecording() {
         const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
         const webmUrl = URL.createObjectURL(webmBlob);
 
-        // Save recorded chunks, then attempt MP3 conversion
-        audioChunks = [];
+        // Add recording to UI list with WebM for playback
+        addRecording(webmUrl, false); // false = WebM format
 
-        // =========================
-        // 🔥 MP3 Conversion (Safe Mode)
-        // Converts WebM to MP3 if FFmpeg is available
-        // =========================
-        let mp3Url = null;
+        // Upload to backend for MP3 conversion
+        const formData = new FormData();
+        formData.append('audio', webmBlob, 'recording.webm');
+
         try {
-            await loadFFmpeg();
+            const response = await fetch('/api/convert_audio', {
+                method: 'POST',
+                body: formData
+            });
 
-            // Skip if FFmpeg is unavailable
-            if (!ffmpegLoaded) {
-                // If MP3 conversion fails, fall back to WebM
-                addRecording(webmUrl, false);
-                return;
+            if (response.ok) {
+                // Trigger automatic download of MP3
+                const blob = await response.blob();
+                const mp3Url = URL.createObjectURL(blob);
+
+                const a = document.createElement("a");
+                a.href = mp3Url;
+                a.download = `recording_${recordingCount}.mp3`;
+                a.click();
+
+                console.log("✅ MP3 conversion successful");
+            } else {
+                console.warn("⚠️ MP3 conversion failed on server");
             }
-
-            // Write WebM file to FFmpeg filesystem
-            ffmpeg.FS("writeFile", "input.webm", await fetchFileFunc(webmBlob));
-
-            // Run FFmpeg conversion command
-            await ffmpeg.run(
-                "-i", "input.webm",
-                "-b:a", "192k",
-                "output.mp3"
-            );
-
-            // Read MP3 output
-            const mp3Data = ffmpeg.FS("readFile", "output.mp3");
-
-            const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
-            mp3Url = URL.createObjectURL(mp3Blob);
-
-            // Add recording with MP3 URL
-            addRecording(mp3Url, true);
-
-            // Automatically download MP3 file
-            const a = document.createElement("a");
-            a.href = mp3Url;
-            a.download = `recording_${recordingCount}.mp3`;
-            a.click();
-
         } catch (e) {
             console.warn("⚠️ MP3 conversion failed:", e);
-            // Fall back to WebM if MP3 conversion fails
-            addRecording(webmUrl, false);
         }
+
+        audioChunks = [];
     };
 
     mediaRecorder.start();
@@ -450,7 +398,7 @@ function stopRecording() {
 }
 
 // Add a new recording to the recordings list with playback and download options
-// isMp3: boolean indicating whether the URL is MP3 or WebM
+// isMp3: boolean indicating whether the URL is MP3 or WebM (for playback)
 function addRecording(url, isMp3 = false) {
     recordingCount++;
 
@@ -459,16 +407,13 @@ function addRecording(url, isMp3 = false) {
     const div = document.createElement("div");
     div.className = "record-item";
 
-    // Use appropriate file extension based on format
-    const fileExtension = isMp3 ? "mp3" : "webm";
+    // For playback, we always use WebM. MP3 download happens separately.
     const formatLabel = isMp3 ? "MP3" : "WebM";
 
     div.innerHTML = `
         <b>Recording ${recordingCount}</b><br>
         <audio controls src="${url}"></audio><br>
-        <a href="${url}" download="recording_${recordingCount}.${fileExtension}">
-            Download (${formatLabel})
-        </a>
+        <span>MP3 download will be available after conversion</span>
     `;
 
     // Add new recording to top of list
