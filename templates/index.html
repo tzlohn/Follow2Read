@@ -356,7 +356,7 @@ async function startRecording() {
         const webmUrl = URL.createObjectURL(webmBlob);
 
         // Add recording to UI list with WebM for playback
-        addRecording(webmUrl, false); // false = WebM format
+        const recordItem = addRecording(webmUrl, "Converting to MP3...");
 
         // Upload to backend for MP3 conversion
         const formData = new FormData();
@@ -378,11 +378,24 @@ async function startRecording() {
                 a.download = `recording_${recordingCount}.mp3`;
                 a.click();
 
+                const statusSpan = recordItem.querySelector('.status-text');
+                if (statusSpan) {
+                    statusSpan.innerText = "MP3 conversion completed. Download started.";
+                }
+
                 console.log("✅ MP3 conversion successful");
             } else {
+                const statusSpan = recordItem.querySelector('.status-text');
+                if (statusSpan) {
+                    statusSpan.innerText = "MP3 conversion failed on server.";
+                }
                 console.warn("⚠️ MP3 conversion failed on server");
             }
         } catch (e) {
+            const statusSpan = recordItem.querySelector('.status-text');
+            if (statusSpan) {
+                statusSpan.innerText = "MP3 conversion failed.";
+            }
             console.warn("⚠️ MP3 conversion failed:", e);
         }
 
@@ -397,9 +410,8 @@ function stopRecording() {
     if (mediaRecorder) mediaRecorder.stop();
 }
 
-// Add a new recording to the recordings list with playback and download options
-// isMp3: boolean indicating whether the URL is MP3 or WebM (for playback)
-function addRecording(url, isMp3 = false) {
+// Add a new recording to the recordings list with playback and status text
+function addRecording(url, statusText = "Pending conversion...") {
     recordingCount++;
 
     const container = document.getElementById("recordingsList");
@@ -407,17 +419,15 @@ function addRecording(url, isMp3 = false) {
     const div = document.createElement("div");
     div.className = "record-item";
 
-    // For playback, we always use WebM. MP3 download happens separately.
-    const formatLabel = isMp3 ? "MP3" : "WebM";
-
     div.innerHTML = `
         <b>Recording ${recordingCount}</b><br>
         <audio controls src="${url}"></audio><br>
-        <span>MP3 download will be available after conversion</span>
+        <span class="status-text">${statusText}</span>
     `;
 
     // Add new recording to top of list
     container.prepend(div);
+    return div;
 }
 
 // Fetch PDF and YouTube video for the selected news item
