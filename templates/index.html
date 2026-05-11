@@ -5,26 +5,36 @@
     <title>Interactive App</title>
 
     <style>
+        /* Base body styling */
         body {
             margin: 0;
             font-family: Arial;
         }
 
+        /* Top navigation bar */
         .top-bar {
             padding: 10px;
             background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
+        /* Dropdown menu for news selection */
         .top-bar input {
             width: 70%;
             padding: 8px;
         }
 
+        /* Top bar buttons */
         .top-bar button {
-            padding: 8px;
+            padding: 8px 12px;
+            height: 40px;
+            font-size: 1em;
+            vertical-align: middle;
         }
 
-        /* 🔄 Loading spinner */
+        /* Loading spinner animation */
         .spinner {
             display: inline-block;
             width: 20px;
@@ -37,15 +47,18 @@
             display: none;
         }
 
+        /* Spinner rotation animation */
         @keyframes spin {
             100% { transform: rotate(360deg); }
         }
 
+        /* Main container layout - flexbox for two-column layout */
         .container {
             display: flex;
             height: calc(100vh - 60px);
         }
 
+        /* Left panel - video and timestamps */
         .left {
             width: 50%;
             display: flex;
@@ -53,39 +66,45 @@
             border-right: 1px solid #ccc;
         }
 
+        /* Right panel - PDF viewer */
         .right {
             width: 50%;
             padding: 10px;
         }
 
+        /* Top section of left panel */
         .left-top {
             flex: 2;
             padding: 10px;
         }
 
+        /* Bottom section of left panel */
         .left-bottom {
             flex: 1;
             padding: 10px;
             border-top: 1px solid #ccc;
         }
 
+        /* Embedded video player */
         iframe {
             width: 100%;
             height: 300px;
         }
 
+        /* PDF viewer */
         #pdfViewer {
             width: 100%;
             height: 90%;
             border: none;
         }
 
+        /* Timestamps list buttons */
         .timestamps button {
             display: block;
             margin: 5px 0;
         }
 
-        /* 🎤 波形畫布 */
+        /* Waveform visualization canvas */
         #waveCanvas {
             width: 100%;
             height: 80px;
@@ -93,13 +112,14 @@
             display: none;
         }
 
+        /* Recording control bar layout */
         .record-bar {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        /* 小波形 */
+        /* Small waveform during recording */
         #waveCanvas {
             width: 150px;
             height: 40px;
@@ -108,13 +128,15 @@
             border-radius: 4px;
         }
 
-        /* 錄音清單 */
+        /* Individual recording item styling */
         .record-item {
             margin-top: 10px;
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 6px;
         }        
+        
+        /* Large action buttons */
         .big-btn {
             font-size: 18px;
             padding: 12px 20px;
@@ -123,7 +145,7 @@
             cursor: pointer;
         }
 
-        /* 時間點按鈕容器 */
+        /* Timestamp item container */
         .time-item {
             display: flex;
             align-items: center;
@@ -131,16 +153,21 @@
             margin: 5px 0;
         }
 
-        /* 小控制按鈕 */
+        /* Small control buttons */
         .small-btn {
             padding: 4px 8px;
             font-size: 12px;
             cursor: pointer;
         }
+        
+        /* News dropdown styling */
         #newsSelect {
-            font-size: 2em;
-            padding: 6px;
-            height: 30px;
+            font-size: 1em;
+            padding: 8px 12px;
+            height: 40px;
+            flex: 1;
+            max-width: 300px;
+            vertical-align: middle;
         }
     </style>
 </head>
@@ -197,47 +224,55 @@
 <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.10/dist/ffmpeg.min.js"></script>
 
 <script>
+// Global YouTube player instance
 let player;
 
+// Initialize YouTube player when API is ready
 function onYouTubeIframeAPIReady() {
     player = new YT.Player('player', {
         height: '300',
         width: '100%',
-        videoId: ''
+        videoId: '' // Empty by default, will be set when user selects a news item
     });
 }
 
+// Extract video ID from various YouTube URL formats
+// Supports: youtube.com/watch?v=ID and youtu.be/ID
 function extractVideoID(url) {
     const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&]+)/;
     const match = url.match(regExp);
     return match ? match[1] : null;
 }
 
+// Record the current timestamp and add it to the timestamps list
+// Creates a button to jump to the timestamp and a pause button
 function recordTime() {
     const time = Math.floor(player.getCurrentTime());
 
     const container = document.createElement("div");
     container.className = "time-item";
 
-    // ▶ 跳轉按鈕
+    // Create button to jump to the recorded time
     const jumpBtn = document.createElement("button");
     jumpBtn.innerText = "▶ " + time + "s";
     jumpBtn.className = "small-btn";
 
+    // Jump button functionality: seek to time and wait before playing
     jumpBtn.onclick = () => {
         player.seekTo(time, true);
 
-        // ⏱ 延遲 1 秒再播放
+        // Delay 1 second before resuming playback
         setTimeout(() => {
             player.playVideo();
         }, 1000);
     };
 
-    // ⏸ 暫停按鈕
+    // Create pause button
     const pauseBtn = document.createElement("button");
     pauseBtn.innerText = "⏸";
     pauseBtn.className = "small-btn";
 
+    // Pause button functionality
     pauseBtn.onclick = () => {
         player.pauseVideo();
     };
@@ -250,11 +285,13 @@ function recordTime() {
 
 /* =========================
    🎧 FFmpeg setup
+   Handles MP3 conversion of recorded audio
 ========================= */
-let ffmpeg = null;
-let fetchFileFunc = null;
-let ffmpegLoaded = false;
+let ffmpeg = null; // FFmpeg instance
+let fetchFileFunc = null; // Function to fetch files for FFmpeg
+let ffmpegLoaded = false; // Flag to track if FFmpeg is ready
 
+// Load FFmpeg library asynchronously
 async function loadFFmpeg() {
     if (ffmpegLoaded) return;
 
@@ -278,16 +315,18 @@ async function loadFFmpeg() {
 }
 
 
-/* 🎤 錄音 + 波形 */
-let mediaRecorder;
-let audioChunks = [];
-let audioContext;
-let analyser;
-let dataArray;
-let animationId;
-let recordingCount = 0;
+/* 🎤 Audio Recording + Waveform Visualization */
+let mediaRecorder; // Handles recording from microphone
+let audioChunks = []; // Stores audio data chunks
+let audioContext; // Web Audio API context for analysis
+let analyser; // Analyser node for waveform data
+let dataArray; // Array to hold frequency/time domain data
+let animationId; // ID for animation frame
+let recordingCount = 0; // Counter for numbering recordings
 
+// Start recording audio from microphone with waveform visualization
 async function startRecording() {
+    // Request microphone access
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     audioContext = new AudioContext();
@@ -302,13 +341,16 @@ async function startRecording() {
     canvas.style.display = "block";
     const ctx = canvas.getContext("2d");
 
+    // Draw waveform continuously during recording
     function draw() {
         animationId = requestAnimationFrame(draw);
         analyser.getByteTimeDomainData(dataArray);
 
+        // Clear canvas with dark background
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+        // Draw green waveform
         ctx.lineWidth = 1.5;
         ctx.strokeStyle = "#00ff88";
 
@@ -317,6 +359,7 @@ async function startRecording() {
         let sliceWidth = canvas.width / dataArray.length;
         let x = 0;
 
+        // Plot amplitude points
         for (let i = 0; i < dataArray.length; i++) {
             let v = dataArray[i] / 128.0;
             let y = v * canvas.height / 2;
@@ -332,62 +375,74 @@ async function startRecording() {
 
     draw();
 
+    // Set up media recorder
     mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
 
+    // Collect audio data
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
+    // Handle end of recording
     mediaRecorder.onstop = async () => {
         cancelAnimationFrame(animationId);
         document.getElementById("waveCanvas").style.display = "none";
 
+        // Create WebM blob
         const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
         const webmUrl = URL.createObjectURL(webmBlob);
 
+        // Add recording to UI list
         addRecording(webmUrl);
 
-        // ✅ 先確保錄音一定正常
+        // Save recorded chunks, then attempt MP3 conversion
         audioChunks = [];
 
         // =========================
-        // 🔥 MP3（安全模式）
+        // 🔥 MP3 Conversion (Safe Mode)
+        // Converts WebM to MP3 if FFmpeg is available
         // =========================
         try {
             await loadFFmpeg();
 
-            if (!ffmpegLoaded) return; // ❗ ffmpeg壞就跳過
+            // Skip if FFmpeg is unavailable
+            if (!ffmpegLoaded) return;
 
+            // Write WebM file to FFmpeg filesystem
             ffmpeg.FS("writeFile", "input.webm", await fetchFileFunc(webmBlob));
 
+            // Run FFmpeg conversion command
             await ffmpeg.run(
                 "-i", "input.webm",
                 "-b:a", "192k",
                 "output.mp3"
             );
 
+            // Read MP3 output
             const mp3Data = ffmpeg.FS("readFile", "output.mp3");
 
             const mp3Blob = new Blob([mp3Data.buffer], { type: "audio/mp3" });
             const mp3Url = URL.createObjectURL(mp3Blob);
 
+            // Automatically download MP3 file
             const a = document.createElement("a");
             a.href = mp3Url;
             a.download = `recording_${recordingCount}.mp3`;
             a.click();
 
         } catch (e) {
-            console.warn("⚠️ MP3 轉換失敗:", e);
+            console.warn("⚠️ MP3 conversion failed:", e);
         }
     };
 
-        mediaRecorder.start();
-    }
+    mediaRecorder.start();
+}
 
+// Stop the current recording
 function stopRecording() {
     if (mediaRecorder) mediaRecorder.stop();
 }
 
-/* ➕ 新增錄音項目 */
+// Add a new recording to the recordings list with playback and download options
 function addRecording(url) {
     recordingCount++;
 
@@ -397,24 +452,28 @@ function addRecording(url) {
     div.className = "record-item";
 
     div.innerHTML = `
-        <b>錄音 ${recordingCount}</b><br>
+        <b>Recording ${recordingCount}</b><br>
         <audio controls src="${url}"></audio><br>
         <a href="${url}" download="recording_${recordingCount}.webm">
-            下載
+            Download
         </a>
     `;
 
+    // Add new recording to top of list
     container.prepend(div);
 }
 
-/* 📄 PDF + YouTube */
+// Fetch PDF and YouTube video for the selected news item
 async function getPDF() {
+    // Show loading spinner
     const spinner = document.getElementById("loadingSpinner");
     spinner.style.display = "inline-block";
 
+    // Get selected URL from dropdown
     const url = document.getElementById("newsSelect").value;
 
     try {
+        // Request content from backend API
         const res = await fetch("/api/get_dom", {
             method: "POST",
             headers: {"Content-Type": "application/json"},
@@ -424,42 +483,51 @@ async function getPDF() {
         const data = await res.json();
         console.log(data);
 
+        // Load PDF if available
         if (data.pdf_url) {
             document.getElementById("pdfViewer").src =
                 "https://docs.google.com/gview?url=" + data.pdf_url + "&embedded=true";
         }
 
+        // Load YouTube video if available
         if (data.video_url) {
             const videoId = extractVideoID(data.video_url);
             if (videoId) player.loadVideoById(videoId);
         }
 
+        // Alert user if no content found
         if (!data.video_url && !data.pdf_url) {
-            alert("沒有找到內容");
+            alert("No content found");
         }
 
     } catch (e) {
-        alert("發生錯誤");
+        alert("An error occurred");
     }
 
+    // Hide loading spinner
     spinner.style.display = "none";
 }
 
+// Call loadDWList when page is ready
 window.onload = loadDWList;
 document.addEventListener("DOMContentLoaded", loadDWList);
 
+// Load list of news items from backend and populate the dropdown
 async function loadDWList() {
     try {
 
         console.log("🚀 loading DW list...");
 
+        // Request news list from backend API
         const res = await fetch("/api/list_dw");
 
         console.log("📡 response status:", res.status);
 
-        const text = await res.text();   // 👈 先不要直接 json
+        // Parse response as text first to debug any issues
+        const text = await res.text();
         console.log("📦 RAW RESPONSE:", text);
 
+        // Attempt to parse JSON
         let data;
         try {
             data = JSON.parse(text);
@@ -470,14 +538,17 @@ async function loadDWList() {
 
         console.log("✅ PARSED DATA:", data);
 
+        // Get dropdown element
         const select = document.getElementById("newsSelect");
         if (!select) {
             console.error("❌ newsSelect not found in DOM");
             return;
         }
 
+        // Clear existing options
         select.innerHTML = "";
 
+        // Add each news item as an option
         data.forEach(item => {
             const option = document.createElement("option");
             option.value = item.url;
@@ -485,7 +556,7 @@ async function loadDWList() {
             select.appendChild(option);
         });
 
-        // 預設選第一個
+        // Select first item by default
         if (data.length > 0) {
             select.selectedIndex = 0;
         }
