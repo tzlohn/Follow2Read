@@ -197,7 +197,7 @@
             <h3>錄音功能</h3>
 
             <div class="record-bar">
-                <button onclick="startRecording()">開始</button>
+                <button onclick="toggleRecording()">開始</button>
                 <button onclick="stopRecording()">停止</button>
 
                 <!-- 小波形 -->
@@ -287,6 +287,55 @@ let analyser; // Analyser node for waveform data
 let dataArray; // Array to hold frequency/time domain data
 let animationId; // ID for animation frame
 let recordingCount = 0; // Counter for numbering recordings
+let isRecording = false; // Track recording state
+let isPaused = false; // Track pause state
+let startButton; // Reference to start/pause button
+
+// Toggle recording start/pause
+function toggleRecording() {
+    if (!isRecording) {
+        startRecording();
+    } else if (isPaused) {
+        resumeRecording();
+    } else {
+        pauseRecording();
+    }
+}
+
+// Update the start/pause button text and state
+function updateStartButton() {
+    if (!startButton) {
+        startButton = document.querySelector('button[onclick="toggleRecording()"]');
+    }
+
+    if (startButton) {
+        if (!isRecording) {
+            startButton.innerText = "開始";
+        } else if (isPaused) {
+            startButton.innerText = "開始";
+        } else {
+            startButton.innerText = "暫停";
+        }
+    }
+}
+
+// Pause the current recording
+function pauseRecording() {
+    if (mediaRecorder && isRecording && !isPaused) {
+        mediaRecorder.pause();
+        isPaused = true;
+        updateStartButton();
+    }
+}
+
+// Resume the paused recording
+function resumeRecording() {
+    if (mediaRecorder && isRecording && isPaused) {
+        mediaRecorder.resume();
+        isPaused = false;
+        updateStartButton();
+    }
+}
 
 // Start recording audio from microphone with waveform visualization
 async function startRecording() {
@@ -369,19 +418,12 @@ async function startRecording() {
             });
 
             if (response.ok) {
-                // Trigger automatic download of MP3
+                // Get MP3 blob and create URL
                 const blob = await response.blob();
                 const mp3Url = URL.createObjectURL(blob);
 
-                const a = document.createElement("a");
-                a.href = mp3Url;
-                a.download = `recording_${recordingCount}.mp3`;
-                a.click();
-
-                const statusSpan = recordItem.querySelector('.status-text');
-                if (statusSpan) {
-                    statusSpan.innerText = "MP3 conversion completed. Download started.";
-                }
+                // Update the recording item with download button
+                updateRecordingWithDownload(recordItem, mp3Url);
 
                 console.log("✅ MP3 conversion successful");
             } else {
@@ -404,11 +446,19 @@ async function startRecording() {
     };
 
     mediaRecorder.start();
+    isRecording = true;
+    isPaused = false;
+    updateStartButton();
 }
 
 // Stop the current recording
 function stopRecording() {
-    if (mediaRecorder) mediaRecorder.stop();
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+        isRecording = false;
+        isPaused = false;
+        updateStartButton();
+    }
 }
 
 // Add a new recording to the recordings list with playback and status text
@@ -429,6 +479,24 @@ function addRecording(url, statusText = "Pending conversion...") {
     // Add new recording to top of list
     container.prepend(div);
     return div;
+}
+
+// Update recording item with download button when conversion succeeds
+function updateRecordingWithDownload(recordItem, mp3Url) {
+    const statusSpan = recordItem.querySelector('.status-text');
+    if (statusSpan) {
+        const downloadBtn = document.createElement("button");
+        downloadBtn.innerText = "Download MP3";
+        downloadBtn.className = "small-btn";
+        downloadBtn.onclick = () => {
+            const a = document.createElement("a");
+            a.href = mp3Url;
+            a.download = `recording_${recordingCount}.mp3`;
+            a.click();
+        };
+
+        statusSpan.parentNode.replaceChild(downloadBtn, statusSpan);
+    }
 }
 
 // Fetch PDF and YouTube video for the selected news item
@@ -477,8 +545,14 @@ async function getPDF() {
 }
 
 // Call loadDWList when page is ready
-window.onload = loadDWList;
-document.addEventListener("DOMContentLoaded", loadDWList);
+window.onload = function() {
+    loadDWList();
+    updateStartButton();
+};
+document.addEventListener("DOMContentLoaded", function() {
+    loadDWList();
+    updateStartButton();
+});
 
 // Load list of news items from backend and populate the dropdown
 async function loadDWList() {
