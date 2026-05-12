@@ -179,6 +179,7 @@
         <option>Loading...</option>
     </select>
     <button onclick="getPDF()">顯示 PDF</button>
+    <span id="videoLinkDisplay" style="margin-left: 10px; font-size: 0.95em; color: #333;"></span>
     <div id="loadingSpinner" class="spinner"></div>
 </div>
 
@@ -188,17 +189,6 @@
 
         <div class="left-top">
             <div id="player"></div>
-
-            <!-- Debug buttons for YouTube troubleshooting -->
-            <div style="margin: 10px 0; padding: 10px; background: #e3f2fd; border: 1px solid #2196f3; border-radius: 5px;">
-                <strong>YouTube Debug Tools:</strong><br>
-                <button onclick="testYouTubeEmbedding()" style="margin: 5px; padding: 5px 10px;">🧪 Test YouTube</button>
-                <button onclick="checkYouTubeStatus()" style="margin: 5px; padding: 5px 10px;">📊 Check Status</button>
-                <button onclick="clearYouTubePlayer()" style="margin: 5px; padding: 5px 10px;">🗑️ Clear Player</button>
-                <button onclick="loadTestVideo()" style="margin: 5px; padding: 5px 10px;">🎥 Load Test Video</button>
-            </div>
-
-            <div id="videoLinkDisplay" style="margin: 10px 0; font-size: 0.95em; color: #333;"></div>
 
             <button class="big-btn" onclick="recordTime()">⏱️ 記錄時間</button>
             <div class="timestamps" id="timestamps"></div>
@@ -356,103 +346,6 @@ function extractVideoID(url) {
 }
 
 // Debug functions for troubleshooting YouTube issues
-function testYouTubeEmbedding() {
-    console.log("=== TESTING YOUTUBE EMBEDDING ===");
-    console.log("YT API loaded:", typeof YT !== 'undefined');
-    console.log("Player exists:", !!player);
-    console.log("Player ready:", playerReady);
-
-    if (!playerReady || !player) {
-        console.error("Player not ready for testing");
-        alert("YouTube player is not ready. Please wait for the page to fully load.");
-        return;
-    }
-
-    try {
-        // Clear any existing error messages
-        const existingErrors = document.querySelectorAll('#player > div[style*="background: #ffebee"]');
-        existingErrors.forEach(el => el.remove());
-
-        // Try loading a known working YouTube video (YouTube's test video)
-        console.log("Loading test video...");
-        player.loadVideoById('jNQXAC9IVRw'); // YouTube's official test video
-        console.log("Test video load initiated");
-
-        // Check status after 3 seconds
-        setTimeout(() => {
-            try {
-                const state = player.getPlayerState();
-                console.log("Test video state after 3s:", state);
-                if (state === -1) {
-                    console.warn("Video failed to load - possibly blocked or network issue");
-                    alert("Test video failed to load. This may indicate:\n- Network connectivity issues\n- YouTube blocking\n- Browser restrictions\n- Ad blocker interference");
-                } else if (state >= 0) {
-                    console.log("Test video loaded successfully!");
-                    alert("Test video loaded successfully! YouTube embedding is working.");
-                }
-            } catch (error) {
-                console.error("Error checking test video state:", error);
-            }
-        }, 3000);
-
-    } catch (error) {
-        console.error("Error in test embedding:", error);
-        alert("Error testing YouTube: " + error.message);
-    }
-}
-
-function checkYouTubeStatus() {
-    console.log("=== YOUTUBE STATUS CHECK ===");
-    console.log("Current timestamp:", new Date().toISOString());
-    console.log("YT API loaded:", typeof YT !== 'undefined');
-    console.log("Player exists:", !!player);
-    console.log("Player ready:", playerReady);
-
-    if (player && playerReady) {
-        try {
-            console.log("Player state:", player.getPlayerState());
-            console.log("Current video URL:", player.getVideoUrl ? player.getVideoUrl() : 'N/A');
-            console.log("Video duration:", player.getDuration ? player.getDuration() : 'N/A');
-            console.log("Available methods:", Object.getOwnPropertyNames(player.__proto__).filter(name =>
-                typeof player[name] === 'function' && !name.startsWith('_')
-            ));
-        } catch (error) {
-            console.error("Error checking player status:", error);
-        }
-    }
-
-    // Test network connectivity to YouTube
-    fetch('https://www.youtube.com/favicon.ico', { method: 'HEAD' })
-        .then(response => {
-            console.log("YouTube network connectivity: OK (status:", response.status + ")");
-        })
-        .catch(error => {
-            console.error("YouTube network connectivity: FAILED", error);
-        });
-
-    console.log("=============================");
-}
-
-function clearYouTubePlayer() {
-    console.log("Clearing YouTube player...");
-    if (player && playerReady) {
-        try {
-            player.stopVideo();
-            player.clearVideo();
-            console.log("Player cleared successfully");
-
-            // Clear any error messages
-            const existingErrors = document.querySelectorAll('#player > div[style*="background"]');
-            existingErrors.forEach(el => el.remove());
-
-        } catch (error) {
-            console.error("Error clearing player:", error);
-        }
-    } else {
-        console.log("Player not ready or doesn't exist");
-    }
-}
-
 // Show video loading error to user
 function showVideoError(message) {
     // Clear any existing error messages
@@ -473,47 +366,6 @@ function showVideoError(message) {
             errorDiv.parentNode.removeChild(errorDiv);
         }
     }, 15000);
-}
-
-// Load a known working test video
-function loadTestVideo() {
-    console.log("Loading known working test video...");
-    if (!playerReady || !player) {
-        console.error("Player not ready for test video");
-        alert("YouTube player is not ready. Please wait for the page to fully load.");
-        return;
-    }
-
-    try {
-        // Clear any existing error messages
-        const existingErrors = document.querySelectorAll('#player > div[style*="background"]');
-        existingErrors.forEach(el => el.remove());
-
-        // Load a known working YouTube video that allows embedding
-        // Using YouTube's official demo video
-        const testVideoId = 'jNQXAC9IVRw';
-        console.log("Loading test video ID:", testVideoId);
-        player.loadVideoById(testVideoId);
-
-        // Check if it loads successfully
-        setTimeout(() => {
-            try {
-                const state = player.getPlayerState();
-                console.log("Test video state:", state);
-                if (state === -1) {
-                    showVideoError("Test video failed to load. YouTube embedding may be blocked.");
-                } else {
-                    console.log("Test video loaded successfully!");
-                }
-            } catch (error) {
-                console.error("Error checking test video:", error);
-            }
-        }, 3000);
-
-    } catch (error) {
-        console.error("Error loading test video:", error);
-        showVideoError("Error loading test video: " + error.message);
-    }
 }
 
 // Record the current timestamp and add it to the timestamps list
