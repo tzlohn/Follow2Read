@@ -222,13 +222,43 @@
 <script>
 // Global YouTube player instance
 let player;
+let playerReady = false;
+
+// Check if YouTube API loaded successfully
+window.onYouTubeIframeAPIReady = function() {
+    console.log("YouTube IFrame API loaded successfully");
+    onYouTubeIframeAPIReady();
+};
+
+// Fallback check in case the API doesn't load
+setTimeout(() => {
+    if (typeof YT === 'undefined') {
+        console.error("YouTube API failed to load within 10 seconds");
+    } else {
+        console.log("YouTube API is available");
+    }
+}, 10000);
 
 // Initialize YouTube player when API is ready
 function onYouTubeIframeAPIReady() {
+    console.log("YouTube API ready, YT object:", typeof YT);
+    console.log("YouTube API ready, initializing player...");
     player = new YT.Player('player', {
         height: '300',
         width: '100%',
-        videoId: '' // Empty by default, will be set when user selects a news item
+        videoId: '', // Empty by default, will be set when user selects a news item
+        events: {
+            'onReady': function(event) {
+                console.log("YouTube player ready");
+                playerReady = true;
+            },
+            'onError': function(event) {
+                console.error("YouTube player error:", event.data);
+            },
+            'onStateChange': function(event) {
+                console.log("YouTube player state changed:", event.data);
+            }
+        }
     });
 }
 
@@ -552,7 +582,8 @@ async function getPDF() {
         });
 
         const data = await res.json();
-        console.log(data);
+        console.log("API Response:", data);
+        console.log("Response status:", res.status);
 
         // Load PDF if available
         if (data.pdf_url) {
@@ -562,8 +593,50 @@ async function getPDF() {
 
         // Load YouTube video if available
         if (data.video_url) {
+            console.log("Video URL found:", data.video_url);
             const videoId = extractVideoID(data.video_url);
-            if (videoId) player.loadVideoById(videoId);
+            console.log("Extracted video ID:", videoId);
+            if (videoId) {
+                // Function to attempt loading the video
+                const attemptLoad = () => {
+                    if (playerReady && player && typeof player.loadVideoById === 'function') {
+                        console.log("Player is ready, loading video with ID:", videoId);
+                        try {
+                            player.loadVideoById(videoId);
+                            console.log("Video load command sent successfully");
+                        } catch (error) {
+                            console.error("Error loading video:", error);
+                        }
+                        return true; // Success
+                    } else {
+                        console.log("Player not ready yet. playerReady:", playerReady, "player exists:", !!player);
+                        return false; // Not ready
+                    }
+                };
+
+                // Try to load immediately
+                if (!attemptLoad()) {
+                    // If not ready, retry every second for up to 10 seconds
+                    let retries = 0;
+                    const maxRetries = 10;
+                    const retryInterval = setInterval(() => {
+                        retries++;
+                        console.log(`Video load retry attempt ${retries}/${maxRetries}`);
+                        
+                        if (attemptLoad()) {
+                            console.log("Video loaded successfully on retry", retries);
+                            clearInterval(retryInterval);
+                        } else if (retries >= maxRetries) {
+                            console.error("Failed to load video after", maxRetries, "retries");
+                            clearInterval(retryInterval);
+                        }
+                    }, 1000);
+                }
+            } else {
+                console.warn("Could not extract video ID from URL:", data.video_url);
+            }
+        } else {
+            console.log("No video URL in response");
         }
 
         // Alert user if no content found
