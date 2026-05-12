@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# system deps for playwright and audio conversion
+# system deps for playwright
 RUN apt-get update && apt-get install -y \
     wget \
     curl \
@@ -18,7 +18,6 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libpangocairo-1.0-0 \
     libgtk-3-0 \
-    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
