@@ -492,19 +492,18 @@ async function startRecording() {
 
                 console.log("✅ MP3 conversion successful");
             } else {
-                const errorData = await response.json();
                 const statusSpan = recordItem.querySelector('.status-text');
                 if (statusSpan) {
-                    statusSpan.innerText = `MP3 conversion failed: ${errorData.error || response.statusText}`;
+                    statusSpan.innerText = "MP3 conversion failed on server.";
                 }
-                console.error("⚠️ MP3 conversion failed:", errorData);
+                console.warn("⚠️ MP3 conversion failed on server");
             }
         } catch (e) {
             const statusSpan = recordItem.querySelector('.status-text');
             if (statusSpan) {
-                statusSpan.innerText = `MP3 conversion failed: ${e.message}`;
+                statusSpan.innerText = "MP3 conversion failed.";
             }
-            console.error("⚠️ MP3 conversion failed:", e);
+            console.warn("⚠️ MP3 conversion failed:", e);
         }
 
         audioChunks = [];
