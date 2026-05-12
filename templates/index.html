@@ -238,6 +238,8 @@
 // Global YouTube player instance
 let player;
 let playerReady = false;
+let currentVideoId = null; // Track currently loaded video ID
+let videoLoadRetryInterval = null; // Track retry interval
 
 // Check if YouTube API loaded successfully
 window.onYouTubeIframeAPIReady = function() {
@@ -649,6 +651,9 @@ async function getPDF() {
     // Get selected URL from dropdown
     const url = document.getElementById("newsSelect").value;
 
+    // Clear current video ID to allow loading new video
+    currentVideoId = null;
+
     try {
         // Request content from backend API
         const res = await fetch("/api/get_dom", {
@@ -677,36 +682,47 @@ async function getPDF() {
             const videoId = extractVideoID(data.video_url);
             console.log("Extracted video ID:", videoId);
             if (videoId) {
+                // Clear any existing retry interval
+                if (videoLoadRetryInterval) {
+                    clearInterval(videoLoadRetryInterval);
+                    videoLoadRetryInterval = null;
+                }
+
                 // Function to attempt loading the video
                 const attemptLoad = () => {
                     if (playerReady && player && typeof player.loadVideoById === 'function') {
-                        console.log("Player is ready, loading video with ID:", videoId);
-                        try {
-                            player.loadVideoById(videoId);
-                            console.log("Video load command sent successfully");
+                        // Only load if this is a different video or no video is loaded
+                        if (currentVideoId !== videoId) {
+                            console.log("Player is ready, loading video with ID:", videoId);
+                            try {
+                                player.loadVideoById(videoId);
+                                currentVideoId = videoId; // Mark this video as loaded
+                                console.log("Video load command sent successfully");
 
-                            // Check if video actually loads after 5 seconds
-                            setTimeout(() => {
-                                try {
-                                    const state = player.getPlayerState();
-                                    console.log("Video state after 5s:", state);
-                                    if (state === -1) {
-                                        console.warn("Video failed to load - may be blocked or unavailable");
-                                        showVideoError("Video failed to load. It may be unavailable, private, or embedding may be disabled.");
-                                    } else if (state >= 0) {
-                                        console.log("Video loaded successfully!");
+                                // Check if video actually loads after 5 seconds
+                                setTimeout(() => {
+                                    try {
+                                        const state = player.getPlayerState();
+                                        console.log("Video state after 5s:", state);
+                                        if (state === -1) {
+                                            console.warn("Video failed to load - may be blocked or unavailable");
+                                            showVideoError("Video failed to load. It may be unavailable, private, or embedding may be disabled.");
+                                        } else if (state >= 0) {
+                                            console.log("Video loaded successfully!");
+                                        }
+                                    } catch (error) {
+                                        console.error("Error checking video load status:", error);
                                     }
-                                } catch (error) {
-                                    console.error("Error checking video load status:", error);
-                                }
-                            }, 5000);
+                                }, 5000);
 
-                            return true; // Success
-                        } catch (error) {
-                            console.error("Error loading video:", error);
-                            showVideoError("Error loading video: " + error.message);
-                            return false;
+                            } catch (error) {
+                                console.error("Error loading video:", error);
+                                showVideoError("Error loading video: " + error.message);
+                            }
+                        } else {
+                            console.log("Video already loaded:", videoId);
                         }
+                        return true; // Success (player ready)
                     } else {
                         console.log("Player not ready yet. playerReady:", playerReady, "player exists:", !!player);
                         return false; // Not ready
@@ -718,16 +734,18 @@ async function getPDF() {
                     // If not ready, retry every second for up to 10 seconds
                     let retries = 0;
                     const maxRetries = 10;
-                    const retryInterval = setInterval(() => {
+                    videoLoadRetryInterval = setInterval(() => {
                         retries++;
                         console.log(`Video load retry attempt ${retries}/${maxRetries}`);
                         
                         if (attemptLoad()) {
                             console.log("Video loaded successfully on retry", retries);
-                            clearInterval(retryInterval);
+                            clearInterval(videoLoadRetryInterval);
+                            videoLoadRetryInterval = null;
                         } else if (retries >= maxRetries) {
                             console.error("Failed to load video after", maxRetries, "retries");
-                            clearInterval(retryInterval);
+                            clearInterval(videoLoadRetryInterval);
+                            videoLoadRetryInterval = null;
                         }
                     }, 1000);
                 }
