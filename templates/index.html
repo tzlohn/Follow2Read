@@ -323,7 +323,6 @@ let startButton; // Reference to start/pause button
 
 // Toggle recording start/pause
 function toggleRecording() {
-    console.log("Toggle recording called. isRecording:", isRecording, "isPaused:", isPaused);
     if (!isRecording) {
         startRecording();
     } else if (isPaused) {
@@ -342,49 +341,29 @@ function updateStartButton() {
     if (startButton) {
         if (!isRecording) {
             startButton.innerText = "開始";
-            startButton.style.backgroundColor = ""; // Reset color
         } else if (isPaused) {
             startButton.innerText = "開始";
-            startButton.style.backgroundColor = "#ffa500"; // Orange for paused state
         } else {
             startButton.innerText = "暫停";
-            startButton.style.backgroundColor = "#ff4444"; // Red for recording state
         }
-        console.log("Button updated to:", startButton.innerText);
     }
 }
 
 // Pause the current recording
 function pauseRecording() {
     if (mediaRecorder && isRecording && !isPaused) {
-        console.log("Attempting to pause recording. MediaRecorder state:", mediaRecorder.state);
-        if (typeof mediaRecorder.pause === 'function') {
-            mediaRecorder.pause();
-            isPaused = true;
-            updateStartButton();
-            console.log("Recording paused. New state:", mediaRecorder.state);
-        } else {
-            console.warn("MediaRecorder.pause() not supported in this browser");
-        }
-    } else {
-        console.log("Cannot pause: mediaRecorder exists:", !!mediaRecorder, "isRecording:", isRecording, "isPaused:", isPaused);
+        mediaRecorder.pause();
+        isPaused = true;
+        updateStartButton();
     }
 }
 
 // Resume the paused recording
 function resumeRecording() {
     if (mediaRecorder && isRecording && isPaused) {
-        console.log("Attempting to resume recording. MediaRecorder state:", mediaRecorder.state);
-        if (typeof mediaRecorder.resume === 'function') {
-            mediaRecorder.resume();
-            isPaused = false;
-            updateStartButton();
-            console.log("Recording resumed. New state:", mediaRecorder.state);
-        } else {
-            console.warn("MediaRecorder.resume() not supported in this browser");
-        }
-    } else {
-        console.log("Cannot resume: mediaRecorder exists:", !!mediaRecorder, "isRecording:", isRecording, "isPaused:", isPaused);
+        mediaRecorder.resume();
+        isPaused = false;
+        updateStartButton();
     }
 }
 
@@ -407,48 +386,34 @@ async function startRecording() {
 
     // Draw waveform continuously during recording
     function draw() {
-        if (!isPaused) {
-            animationId = requestAnimationFrame(draw);
-            analyser.getByteTimeDomainData(dataArray);
+        animationId = requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(dataArray);
 
-            // Clear canvas with dark background
-            ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Clear canvas with dark background
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // Draw green waveform
-            ctx.lineWidth = 1.5;
-            ctx.strokeStyle = "#00ff88";
+        // Draw green waveform
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "#00ff88";
 
-            ctx.beginPath();
+        ctx.beginPath();
 
-            let sliceWidth = canvas.width / dataArray.length;
-            let x = 0;
+        let sliceWidth = canvas.width / dataArray.length;
+        let x = 0;
 
-            // Plot amplitude points
-            for (let i = 0; i < dataArray.length; i++) {
-                let v = dataArray[i] / 128.0;
-                let y = v * canvas.height / 2;
+        // Plot amplitude points
+        for (let i = 0; i < dataArray.length; i++) {
+            let v = dataArray[i] / 128.0;
+            let y = v * canvas.height / 2;
 
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
 
-                x += sliceWidth;
-            }
-
-            ctx.stroke();
-        } else {
-            // When paused, show a static waveform or paused indicator
-            ctx.fillStyle = "#111";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            ctx.fillStyle = "#666";
-            ctx.font = "16px Arial";
-            ctx.textAlign = "center";
-            ctx.fillText("PAUSED", canvas.width / 2, canvas.height / 2);
-
-            // Continue the animation loop but don't update waveform
-            animationId = requestAnimationFrame(draw);
+            x += sliceWidth;
         }
+
+        ctx.stroke();
     }
 
     draw();
