@@ -238,7 +238,7 @@ let playerReady = false;
 // Check if YouTube API loaded successfully
 window.onYouTubeIframeAPIReady = function() {
     console.log("YouTube IFrame API loaded successfully");
-    onYouTubeIframeAPIReady();
+    initYouTubePlayer();
 };
 
 // Fallback check in case the API doesn't load
@@ -258,7 +258,7 @@ setTimeout(() => {
 }, 10000);
 
 // Initialize YouTube player when API is ready
-function onYouTubeIframeAPIReady() {
+function initYouTubePlayer() {
     console.log("YouTube API ready, YT object:", typeof YT);
     console.log("YouTube API ready, initializing player...");
     try {
