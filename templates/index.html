@@ -198,6 +198,8 @@
                 <button onclick="loadTestVideo()" style="margin: 5px; padding: 5px 10px;">🎥 Load Test Video</button>
             </div>
 
+            <div id="videoLinkDisplay" style="margin: 10px 0; font-size: 0.95em; color: #333;"></div>
+
             <button class="big-btn" onclick="recordTime()">⏱️ 記錄時間</button>
             <div class="timestamps" id="timestamps"></div>
         </div>
@@ -800,8 +802,12 @@ async function getPDF() {
         }
 
         // Load YouTube video if available
+        const videoLinkDisplay = document.getElementById('videoLinkDisplay');
         if (data.video_url) {
             console.log("Video URL found:", data.video_url);
+            if (videoLinkDisplay) {
+                videoLinkDisplay.innerHTML = `<strong>Found YouTube link:</strong> <a href="${data.video_url}" target="_blank" rel="noreferrer">${data.video_url}</a>`;
+            }
             const videoId = extractVideoID(data.video_url);
             console.log("Extracted video ID:", videoId);
             if (videoId) {
@@ -861,16 +867,21 @@ async function getPDF() {
                 }
             } else {
                 console.warn("Could not extract video ID from URL:", data.video_url);
+                if (videoLinkDisplay) {
+                    videoLinkDisplay.innerHTML = '<strong>Found YouTube link:</strong> (invalid video URL)';
+                }
             }
         } else {
             console.log("No video URL in response");
+            if (videoLinkDisplay) {
+                videoLinkDisplay.innerHTML = '<strong>Found YouTube link:</strong> None';
+            }
         }
 
         // Alert user if no content found
         if (!data.video_url && !data.pdf_url) {
             alert("No content found");
         }
-
     } catch (e) {
         alert("An error occurred");
     }
