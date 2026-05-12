@@ -119,14 +119,20 @@ def get_dom():
         }
 
         search_url = f"https://www.youtube.com/results?search_query={query}"
+        print(f"YouTube search URL: {search_url}")
         res = requests.get(search_url, headers=headers)
+        print(f"YouTube search response status: {res.status_code}")
 
         video_url = None
 
         matches = re.findall(r"watch\?v=(\S{11})", res.text)
-
+        print(f"YouTube video ID matches found: {len(matches)}")
         if matches:
-            video_url = f"https://www.youtube.com/watch?v={matches[0]}"
+            video_id = matches[0]
+            video_url = f"https://www.youtube.com/watch?v={video_id}"
+            print(f"Selected video URL: {video_url}")
+        else:
+            print("No YouTube video IDs found in search results")
 
         return jsonify({
             "status": "ok",
