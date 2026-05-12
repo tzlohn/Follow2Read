@@ -813,6 +813,9 @@ async function loadDWList() {
         // Select first item by default
         if (data.length > 0) {
             select.selectedIndex = 0;
+            // Automatically load the latest news PDF and video
+            console.log("📺 Automatically loading latest news...");
+            await getPDF();
         }
 
     } catch (err) {
