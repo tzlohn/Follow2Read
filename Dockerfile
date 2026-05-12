@@ -17,8 +17,8 @@ RUN apt-get update && apt-get install -y \
     libgbm1 \
     libasound2 \
     libpangocairo-1.0-0 \
-    libgtk-3-0 \\
-    ffmpeg \\
+    libgtk-3-0 \
+    ffmpeg \
     && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
@@ -31,4 +31,5 @@ COPY . .
 
 # Render requires $PORT
 CMD ["sh", "-c", "gunicorn app:app --bind 0.0.0.0:$PORT"]
+
 
