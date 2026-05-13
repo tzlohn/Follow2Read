@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>DW跟讀仔</title>
+    <title>小王子的跟屁蟲</title>
 
     <style>
         /* Base body styling */
@@ -268,7 +268,13 @@
     <div class="right">
         <div class="right-top">
             <h3>PDF 顯示區</h3>
-            <iframe id="pdfViewer" type="application/pdf"></iframe>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <button onclick="prevPage()">上一頁</button>
+                <span>頁面: <span id="pageNum">1</span> / <span id="pageCount">1</span></span>
+                <button onclick="nextPage()">下一頁</button>
+                <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
+            </div>
+            <canvas id="pdfCanvas" style="width: 100%; height: 100%; border: 1px solid #ddd;"></canvas>
         </div>
         <div class="right-bottom">
             <h3>文字編輯區</h3>
@@ -284,7 +290,7 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log("=== Page Load Initialization ===");
     console.log("DOM Content Loaded");
     console.log("Player element:", document.getElementById('player'));
-    console.log("PDF Viewer element:", document.getElementById('pdfViewer'));
+    console.log("PDF Canvas element:", document.getElementById('pdfCanvas'));
 });
 
 // Also initialize on window load
@@ -296,12 +302,44 @@ window.addEventListener('load', function() {
 
 <script src="https://www.youtube.com/iframe_api"></script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
 <script>
 // Global YouTube player instance
 let player;
 let playerReady = false;
 let currentVideoId = null; // Track currently loaded video ID
 let videoLoadRetryInterval = null; // Track retry interval
+
+// PDF.js globals
+let pdfDoc = null;
+let pageNum = 1;
+let pageRendering = false;
+let pageNumPending = null;
+let scale = 1.5;
+let canvas = document.getElementById('pdfCanvas');
+let ctx = canvas.getContext('2d');
+
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+// Cookie functions
+function setCookie(name, value, days = 30) {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+}
+
+function getCookie(name) {
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
 
 // Check if YouTube API loaded successfully
 window.onYouTubeIframeAPIReady = function() {
@@ -350,9 +388,15 @@ function initYouTubePlayer() {
                         loadVideoById: typeof player.loadVideoById === 'function',
                         getPlayerState: typeof player.getPlayerState === 'function'
                     });
+                    // Load saved timestamp from cookie
+                    const savedTime = getCookie('youtubeTimestamp');
+                    if (savedTime) {
+                        player.seekTo(parseFloat(savedTime), true);
+                        console.log("Loaded YouTube timestamp from cookie:", savedTime);
+                    }
                     // Auto-load PDF when player is ready
-                    console.log("Calling loadPDFFromServer...");
-                    loadPDFFromServer();
+                    console.log("Calling loadPdfDocument...");
+                    loadPdfDocument();
                 },
                 'onError': function(event) {
                     console.error("✗ YouTube player error:", event.data);
@@ -461,6 +505,9 @@ function showVideoError(message) {
 // Creates a button to jump to the timestamp and a pause button
 function recordTime() {
     const time = Math.floor(player.getCurrentTime());
+    
+    // Save timestamp to cookie
+    setCookie('youtubeTimestamp', time);
 
     const container = document.createElement("div");
     container.className = "time-item";
@@ -715,72 +762,93 @@ function updateRecordingWithDownload(recordItem, mp3Url) {
     }
 }
 
-// Load PDF from server
-function loadPDFFromServer(pdfPath) {
-    // Try multiple path variations
-    const paths = [
-        pdfPath || './pdfs/DerKleinePrinz.pdf',  // Relative path
-        '/pdfs/DerKleinePrinz.pdf',               // Absolute path from server root
-        './pdfs/DerKleinePrinz.pdf',              // Current directory relative
-    ];
+// Load PDF from server using PDF.js
+function loadPdfDocument(pdfPath) {
+    const path = pdfPath || './pdfs/DerKleinePrinz.pdf';
+    const fullUrl = path.startsWith('/') || path.startsWith('http') 
+        ? path 
+        : window.location.origin + '/' + path.replace(/^\.\//, '');
     
-    console.log("=== PDF Loading Debug ===");
-    console.log("Window origin:", window.location.origin);
-    console.log("Current page URL:", window.location.href);
+    console.log("Loading PDF from:", fullUrl);
     
-    const pdfViewer = document.getElementById("pdfViewer");
-    if (!pdfViewer) {
-        console.error("✗ pdfViewer element not found!");
-        return;
-    }
-    
-    // Try the first path that works
-    let pathIndex = 0;
-    
-    function tryLoadPDF() {
-        if (pathIndex >= paths.length) {
-            console.error("✗ All PDF paths failed. Please check:");
-            console.log("1. PDF file exists at the correct location");
-            console.log("2. Server is configured to serve static files");
-            console.log("3. Path capitalization is correct");
-            alert("PDF not found. Check console for details.");
-            return;
+    pdfjsLib.getDocument(fullUrl).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        document.getElementById('pageCount').textContent = pdf.numPages;
+        
+        // Load saved page from cookie
+        const savedPage = getCookie('pdfPage');
+        if (savedPage && savedPage <= pdf.numPages) {
+            pageNum = parseInt(savedPage);
+        } else {
+            pageNum = 1;
         }
         
-        const path = paths[pathIndex];
-        console.log(`\nTrying path [${pathIndex + 1}/${paths.length}]:`, path);
+        renderPage(pageNum);
+        console.log("PDF loaded successfully");
+    }).catch(function(error) {
+        console.error("Error loading PDF:", error);
+        alert("Error loading PDF: " + error.message);
+    });
+}
+
+// Render a page of the PDF
+function renderPage(num) {
+    pageRendering = true;
+    pdfDoc.getPage(num).then(function(page) {
+        const viewport = page.getViewport({scale: scale});
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
         
-        // Construct full URL
-        const fullUrl = path.startsWith('/') || path.startsWith('http') 
-            ? path 
-            : window.location.origin + '/' + path.replace(/^\.\//, '');
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
         
-        console.log("Full URL:", fullUrl);
+        const renderTask = page.render(renderContext);
         
-        // Check if file exists using HEAD request
-        fetch(fullUrl, { method: 'HEAD' })
-            .then(response => {
-                console.log(`Response status: ${response.status}`);
-                if (response.ok) {
-                    console.log("✓ File found! Loading PDF...");
-                    pdfViewer.src = path;
-                    console.log("✓ PDF src set to:", path);
-                } else {
-                    console.warn(`✗ File not found (${response.status}). Trying next path...`);
-                    pathIndex++;
-                    tryLoadPDF();
-                }
-            })
-            .catch(error => {
-                console.warn("✗ Fetch error:", error.message);
-                // Still try to load it anyway (some servers don't support HEAD)
-                console.log("Attempting to load anyway...");
-                pdfViewer.src = path;
-                pathIndex = paths.length; // Stop trying other paths
-            });
-    }
+        renderTask.promise.then(function() {
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        });
+    });
     
-    tryLoadPDF();
+    document.getElementById('pageNum').textContent = num;
+}
+
+// Queue rendering if another page is rendering
+function queueRenderPage(num) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num);
+    }
+}
+
+// Navigate to previous page
+function prevPage() {
+    if (pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum);
+    setCookie('pdfPage', pageNum);
+}
+
+// Navigate to next page
+function nextPage() {
+    if (pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum);
+    setCookie('pdfPage', pageNum);
+}
+
+// Go to specific page
+function goToPage(num) {
+    if (num < 1 || num > pdfDoc.numPages) return;
+    pageNum = parseInt(num);
+    queueRenderPage(pageNum);
+    setCookie('pdfPage', pageNum);
 }
 
 // Fetch PDF and YouTube video for the selected news item
