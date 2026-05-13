@@ -717,13 +717,16 @@ function updateRecordingWithDownload(recordItem, mp3Url) {
 
 // Load PDF from server
 function loadPDFFromServer(pdfPath) {
-    // Use Flask route to serve PDF
-    const pdfFilename = pdfPath || 'DerKleinePrinz.pdf';
-    const path = `/pdfs/${pdfFilename}`;
+    // Try multiple path variations
+    const paths = [
+        pdfPath || './pdfs/DerKleinePrinz.pdf',  // Relative path
+        '/pdfs/DerKleinePrinz.pdf',               // Absolute path from server root
+        './pdfs/DerKleinePrinz.pdf',              // Current directory relative
+    ];
     
-    console.log("=== PDF Loading ===");
-    console.log("PDF Filename:", pdfFilename);
-    console.log("Path:", path);
+    console.log("=== PDF Loading Debug ===");
+    console.log("Window origin:", window.location.origin);
+    console.log("Current page URL:", window.location.href);
     
     const pdfViewer = document.getElementById("pdfViewer");
     if (!pdfViewer) {
@@ -731,26 +734,53 @@ function loadPDFFromServer(pdfPath) {
         return;
     }
     
-    // Check if file exists
-    fetch(path, { method: 'HEAD' })
-        .then(response => {
-            console.log("Response status:", response.status);
-            if (response.ok) {
-                console.log("✓ PDF found! Loading from:", path);
+    // Try the first path that works
+    let pathIndex = 0;
+    
+    function tryLoadPDF() {
+        if (pathIndex >= paths.length) {
+            console.error("✗ All PDF paths failed. Please check:");
+            console.log("1. PDF file exists at the correct location");
+            console.log("2. Server is configured to serve static files");
+            console.log("3. Path capitalization is correct");
+            alert("PDF not found. Check console for details.");
+            return;
+        }
+        
+        const path = paths[pathIndex];
+        console.log(`\nTrying path [${pathIndex + 1}/${paths.length}]:`, path);
+        
+        // Construct full URL
+        const fullUrl = path.startsWith('/') || path.startsWith('http') 
+            ? path 
+            : window.location.origin + '/' + path.replace(/^\.\//, '');
+        
+        console.log("Full URL:", fullUrl);
+        
+        // Check if file exists using HEAD request
+        fetch(fullUrl, { method: 'HEAD' })
+            .then(response => {
+                console.log(`Response status: ${response.status}`);
+                if (response.ok) {
+                    console.log("✓ File found! Loading PDF...");
+                    pdfViewer.src = path;
+                    console.log("✓ PDF src set to:", path);
+                } else {
+                    console.warn(`✗ File not found (${response.status}). Trying next path...`);
+                    pathIndex++;
+                    tryLoadPDF();
+                }
+            })
+            .catch(error => {
+                console.warn("✗ Fetch error:", error.message);
+                // Still try to load it anyway (some servers don't support HEAD)
+                console.log("Attempting to load anyway...");
                 pdfViewer.src = path;
-                console.log("✓ PDF loaded successfully");
-            } else {
-                console.error("✗ PDF not found (Status: " + response.status + ")");
-                console.error("Make sure the file exists at:", path);
-                alert("PDF file not found at: " + path);
-            }
-        })
-        .catch(error => {
-            console.error("✗ Error checking PDF:", error.message);
-            // Still try to load it
-            console.log("Attempting to load anyway...");
-            pdfViewer.src = path;
-        });
+                pathIndex = paths.length; // Stop trying other paths
+            });
+    }
+    
+    tryLoadPDF();
 }
 
 // Fetch PDF and YouTube video for the selected news item
