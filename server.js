@@ -3,11 +3,46 @@ import axios from "axios";
 import * as cheerio from "cheerio";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Serve static files from public folder
 app.use(express.static("public"));
+
+// Serve index.html from templates folder
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "templates", "index.html"));
+});
+
+// Serve PDF files from pdfs folder
+app.get("/pdfs/:filename", (req, res) => {
+  try {
+    const filename = req.params.filename;
+    
+    // Security check: prevent directory traversal
+    if (filename.includes("..") || filename.includes("/")) {
+      return res.status(403).json({ error: "Invalid file path" });
+    }
+    
+    const pdfPath = path.join(__dirname, "pdfs", filename);
+    
+    // Check if file exists
+    if (!fs.existsSync(pdfPath)) {
+      return res.status(404).json({ error: "PDF file not found" });
+    }
+    
+    res.setHeader("Content-Type", "application/pdf");
+    res.sendFile(pdfPath);
+  } catch (err) {
+    console.error("Error serving PDF:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 /**
  * =========================
