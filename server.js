@@ -118,10 +118,35 @@ app.get("/api/download", async (req, res) => {
   }
 });
 
+/**
+ * =========================
+ * 🏠 Serve main page
+ * =========================
+ */
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "templates", "index.html"));
+});
 
 /**
  * =========================
- * 🚀 Server start
+ * � Serve PDF files
+ * =========================
+ */
+app.get("/pdfs/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, "pdfs", filename);
+  
+  // Check if file exists
+  if (fs.existsSync(filePath)) {
+    res.sendFile(filePath);
+  } else {
+    res.status(404).json({ error: "PDF not found" });
+  }
+});
+
+/**
+ * =========================
+ * �🚀 Server start
  * =========================
  */
 app.listen(PORT, () => {
