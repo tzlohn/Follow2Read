@@ -694,17 +694,10 @@ function updateRecordingWithDownload(recordItem, mp3Url) {
 // Load PDF from server
 function loadPDFFromServer(pdfPath) {
     // Use the provided path or default to the specified PDF
-    const path = pdfPath || '/pdfs/DerkleinePrinz.pdf';
+    const path = pdfPath || './pdfs/DerKleinePrinz.pdf';
 
-    try {
-        // Load PDF using Google Docs viewer with server path
-        const pdfUrl = window.location.origin + path;
-        document.getElementById("pdfViewer").src = "https://docs.google.com/gview?url=" + encodeURIComponent(pdfUrl) + "&embedded=true";
-        console.log("PDF loaded from:", pdfUrl);
-    } catch (error) {
-        console.error("Error loading PDF:", error);
-        alert("無法載入 PDF，請檢查路徑是否正確");
-    }
+    console.log("Loading PDF from path:", path);
+    document.getElementById("pdfViewer").src = path;
 }
 
 // Fetch PDF and YouTube video for the selected news item
