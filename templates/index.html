@@ -55,7 +55,7 @@
         /* Main container layout - flexbox for two-column layout */
         .container {
             display: flex;
-            height: calc(100vh - 60px);
+            height: 100vh;
         }
 
         /* Left panel - video and timestamps */
@@ -237,15 +237,6 @@
 
 <body>
 
-<div class="top-bar">
-    <select id="newsSelect">
-        <option>Loading...</option>
-    </select>
-    <button onclick="getPDF()">載入影片並顯示 PDF</button>
-    <span id="videoLinkDisplay" style="margin-left: 10px; font-size: 0.95em; color: #333;"></span>
-    <div id="loadingSpinner" class="spinner"></div>
-</div>
-
 <div class="container">
 
     <div class="left">
@@ -326,16 +317,19 @@ function initYouTubePlayer() {
         player = new YT.Player('player', {
             height: '300',
             width: '100%',
-            videoId: '', // Empty by default, will be set when user selects a news item
+            videoId: 'UKWnzQfiv1E', // Fixed video ID that always loads
             events: {
                 'onReady': function(event) {
                     console.log("YouTube player ready");
                     playerReady = true;
+                    currentVideoId = 'UKWnzQfiv1E'; // Track the loaded video
                     // Test basic functionality
                     console.log("Player methods available:", {
                         loadVideoById: typeof player.loadVideoById === 'function',
                         getPlayerState: typeof player.getPlayerState === 'function'
                     });
+                    // Auto-load PDF when player is ready
+                    loadPDFFromServer();
                 },
                 'onError': function(event) {
                     console.error("YouTube player error:", event.data);
@@ -694,6 +688,22 @@ function updateRecordingWithDownload(recordItem, mp3Url) {
         };
 
         statusSpan.parentNode.replaceChild(downloadBtn, statusSpan);
+    }
+}
+
+// Load PDF from server
+function loadPDFFromServer(pdfPath) {
+    // Use the provided path or default to the specified PDF
+    const path = pdfPath || '/pdfs/DerkleinePrinz.pdf';
+
+    try {
+        // Load PDF using Google Docs viewer with server path
+        const pdfUrl = window.location.origin + path;
+        document.getElementById("pdfViewer").src = "https://docs.google.com/gview?url=" + encodeURIComponent(pdfUrl) + "&embedded=true";
+        console.log("PDF loaded from:", pdfUrl);
+    } catch (error) {
+        console.error("Error loading PDF:", error);
+        alert("無法載入 PDF，請檢查路徑是否正確");
     }
 }
 
