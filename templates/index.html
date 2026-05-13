@@ -84,6 +84,7 @@
             border-radius: 6px;
             overflow: hidden;
             background: #fff;
+            min-width: 0;
         }
 
         /* Lower right section - Text edit */
@@ -95,6 +96,13 @@
             border-radius: 6px;
             overflow: hidden;
             background: #fff;
+            min-width: 0;
+        }
+
+        .container,
+        .left,
+        .right {
+            min-width: 0;
         }
 
         /* Text edit area styling */
@@ -134,12 +142,13 @@
             height: 300px;
         }
 
-        /* PDF viewer */
-        #pdfViewer {
+        /* PDF canvas viewer */
+        #pdfCanvas {
             width: 100%;
-            height: 100%;
+            height: auto;
+            display: block;
             border: none;
-            flex: 1;
+            max-width: 100%;
         }
 
         .right-top h3 {
@@ -318,7 +327,7 @@ let pageRendering = false;
 let pageNumPending = null;
 let scale = 1.5;
 let canvas = document.getElementById('pdfCanvas');
-let ctx = canvas.getContext('2d');
+let ctx = canvas ? canvas.getContext('2d') : null;
 
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -391,9 +400,24 @@ function initYouTubePlayer() {
                     // Load saved timestamp from cookie
                     const savedTime = getCookie('youtubeTimestamp');
                     if (savedTime) {
-                        player.seekTo(parseFloat(savedTime), true);
-                        console.log("Loaded YouTube timestamp from cookie:", savedTime);
+                        const parsed = parseFloat(savedTime);
+                        if (!isNaN(parsed)) {
+                            player.seekTo(parsed, true);
+                            console.log("Loaded YouTube timestamp from cookie:", parsed);
+                        }
                     }
+                    // Start auto-save interval for timestamp
+                    setInterval(() => {
+                        if (playerReady && player && typeof player.getCurrentTime === 'function') {
+                            const currentTime = Math.floor(player.getCurrentTime());
+                            setCookie('youtubeTimestamp', currentTime);
+                        }
+                    }, 5000);
+                    window.addEventListener('beforeunload', () => {
+                        if (playerReady && player && typeof player.getCurrentTime === 'function') {
+                            setCookie('youtubeTimestamp', Math.floor(player.getCurrentTime()));
+                        }
+                    });
                     // Auto-load PDF when player is ready
                     console.log("Calling loadPdfDocument...");
                     loadPdfDocument();
@@ -795,17 +819,22 @@ function loadPdfDocument(pdfPath) {
 function renderPage(num) {
     pageRendering = true;
     pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({scale: scale});
+        const parentWidth = canvas.parentElement.clientWidth;
+        const desiredScale = Math.min(scale, parentWidth / page.getViewport({scale: 1}).width);
+        const viewport = page.getViewport({scale: desiredScale});
+
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
+
         const renderContext = {
             canvasContext: ctx,
             viewport: viewport
         };
-        
+
         const renderTask = page.render(renderContext);
-        
+
         renderTask.promise.then(function() {
             pageRendering = false;
             if (pageNumPending !== null) {
