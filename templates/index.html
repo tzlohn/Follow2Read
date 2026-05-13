@@ -268,7 +268,7 @@
     <div class="right">
         <div class="right-top">
             <h3>PDF 顯示區</h3>
-            <iframe id="pdfViewer"></iframe>
+            <iframe id="pdfViewer" type="application/pdf"></iframe>
         </div>
         <div class="right-bottom">
             <h3>文字編輯區</h3>
@@ -277,6 +277,22 @@
     </div>
 
 </div>
+
+<script>
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("=== Page Load Initialization ===");
+    console.log("DOM Content Loaded");
+    console.log("Player element:", document.getElementById('player'));
+    console.log("PDF Viewer element:", document.getElementById('pdfViewer'));
+});
+
+// Also initialize on window load
+window.addEventListener('load', function() {
+    console.log("=== Window Load Event ===");
+    console.log("All resources loaded");
+});
+</script>
 
 <script src="https://www.youtube.com/iframe_api"></script>
 
@@ -295,6 +311,7 @@ window.onYouTubeIframeAPIReady = function() {
 
 // Fallback check in case the API doesn't load
 setTimeout(() => {
+    console.log("=== YouTube API Status Check (10s) ===");
     if (typeof YT === 'undefined') {
         console.error("YouTube API failed to load within 10 seconds");
         console.log("Possible causes:");
@@ -302,17 +319,22 @@ setTimeout(() => {
         console.log("- Content Security Policy blocking YouTube");
         console.log("- Ad blocker or browser extension interference");
         console.log("- Firewall blocking YouTube domains");
-
         alert("YouTube API failed to load. Check:\n1. Internet connection\n2. Ad blockers\n3. Browser security settings\n4. Firewall settings");
     } else {
-        console.log("YouTube API is available");
+        console.log("✓ YouTube API is available");
+        if (!playerReady && typeof initYouTubePlayer === 'function') {
+            console.log("Manually initializing YouTube player...");
+            initYouTubePlayer();
+        }
     }
 }, 10000);
 
 // Initialize YouTube player when API is ready
 function initYouTubePlayer() {
+    console.log("=== YouTube Player Initialization ===");
     console.log("YouTube API ready, YT object:", typeof YT);
-    console.log("YouTube API ready, initializing player...");
+    console.log("Player element exists:", !!document.getElementById('player'));
+    
     try {
         player = new YT.Player('player', {
             height: '300',
@@ -320,7 +342,7 @@ function initYouTubePlayer() {
             videoId: 'UKWnzQfiv1E', // Fixed video ID that always loads
             events: {
                 'onReady': function(event) {
-                    console.log("YouTube player ready");
+                    console.log("✓ YouTube player ready");
                     playerReady = true;
                     currentVideoId = 'UKWnzQfiv1E'; // Track the loaded video
                     // Test basic functionality
@@ -329,10 +351,11 @@ function initYouTubePlayer() {
                         getPlayerState: typeof player.getPlayerState === 'function'
                     });
                     // Auto-load PDF when player is ready
+                    console.log("Calling loadPDFFromServer...");
                     loadPDFFromServer();
                 },
                 'onError': function(event) {
-                    console.error("YouTube player error:", event.data);
+                    console.error("✗ YouTube player error:", event.data);
                     handleYouTubeError(event.data);
                 },
                 'onStateChange': function(event) {
@@ -340,8 +363,9 @@ function initYouTubePlayer() {
                 }
             }
         });
+        console.log("✓ YouTube player object created");
     } catch (error) {
-        console.error("Error creating YouTube player:", error);
+        console.error("✗ Error creating YouTube player:", error);
         alert("Failed to create YouTube player: " + error.message);
     }
 }
@@ -695,9 +719,22 @@ function updateRecordingWithDownload(recordItem, mp3Url) {
 function loadPDFFromServer(pdfPath) {
     // Use the provided path or default to the specified PDF
     const path = pdfPath || './pdfs/DerKleinePrinz.pdf';
-
-    console.log("Loading PDF from path:", path);
-    document.getElementById("pdfViewer").src = path;
+    
+    try {
+        console.log("=== PDF Loading ===");
+        console.log("Path:", path);
+        
+        const pdfViewer = document.getElementById("pdfViewer");
+        if (!pdfViewer) {
+            console.error("pdfViewer element not found!");
+            return;
+        }
+        
+        pdfViewer.src = path;
+        console.log("✓ PDF src set successfully");
+    } catch (error) {
+        console.error("Error loading PDF:", error);
+    }
 }
 
 // Fetch PDF and YouTube video for the selected news item
