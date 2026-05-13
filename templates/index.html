@@ -317,7 +317,7 @@ window.addEventListener('load', function() {
 </script>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script id="pdfjsScript" src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.12.313/pdf.min.js" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.12.313/pdf.min.js"></script>
 
 <script>
 // Global YouTube player instance
@@ -783,58 +783,17 @@ function saveUserHistory() {
     }
 }
 
-function loadPdfJsScript() {
-    return new Promise((resolve, reject) => {
-        if (window.pdfjsLib) {
-            return resolve(window.pdfjsLib);
-        }
-
-        const existing = document.getElementById("pdfjsScript");
-        if (existing) {
-            existing.addEventListener("load", () => {
-                resolve(window.pdfjsLib);
-            });
-            existing.addEventListener("error", () => {
-                reject(new Error("Failed to load PDF.js script"));
-            });
-            return;
-        }
-
-        const script = document.createElement("script");
-        script.id = "pdfjsScript";
-        script.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.12.313/pdf.min.js";
-        script.crossOrigin = "anonymous";
-        script.onload = () => {
-            if (window.pdfjsLib) {
-                resolve(window.pdfjsLib);
-            } else {
-                reject(new Error("PDF.js loaded but pdfjsLib is still undefined"));
-            }
-        };
-        script.onerror = () => reject(new Error("Failed to load PDF.js from CDN"));
-        document.head.appendChild(script);
-    });
-}
-
-async function initPdfJS() {
-    try {
-        await loadPdfJsScript();
+function initPdfJS() {
+    if (window.pdfjsLib) {
         pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.12.313/pdf.worker.min.js";
-        console.log("✓ PDF.js initialized");
-    } catch (error) {
-        console.error("PDF.js initialization failed:", error);
+    } else {
+        console.error("pdfjsLib not available");
     }
 }
 
 async function loadPdfDocument(pageNumber = 1) {
-    try {
-        await loadPdfJsScript();
-        if (!window.pdfjsLib) {
-            throw new Error("pdfjsLib not loaded after script load");
-        }
-        initPdfJS();
-    } catch (error) {
-        console.error("pdfjsLib not loaded", error);
+    if (!window.pdfjsLib) {
+        console.error("pdfjsLib not loaded");
         updatePdfStatus("PDF.js load error");
         return;
     }
