@@ -1,0 +1,1145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>小王子的跟屁蟲</title>
+
+    <style>
+        /* Base body styling */
+        body {
+            margin: 0;
+            font-family: Arial;
+        }
+
+        /* Top navigation bar */
+        .top-bar {
+            padding: 10px;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Dropdown menu for news selection */
+        .top-bar input {
+            width: 70%;
+            padding: 8px;
+        }
+
+        /* Top bar buttons */
+        .top-bar button {
+            padding: 8px 12px;
+            height: 40px;
+            font-size: 1em;
+            vertical-align: middle;
+        }
+
+        /* Loading spinner animation */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #ccc;
+            border-top: 3px solid #333;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+            display: none;
+        }
+
+        /* Spinner rotation animation */
+        @keyframes spin {
+            100% { transform: rotate(360deg); }
+        }
+
+        /* Main container layout - flexbox for two-column layout */
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Left panel - video and timestamps */
+        .left {
+            width: 50%;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid #ccc;
+        }
+
+        /* Right panel - PDF viewer */
+        .right {
+            width: 50%;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Upper right section - PDF display */
+        .right-top {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fff;
+            min-width: 0;
+        }
+
+        /* Lower right section - Text edit */
+        .right-bottom {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #fff;
+            min-width: 0;
+        }
+
+        .container,
+        .left,
+        .right {
+            min-width: 0;
+        }
+
+        /* Text edit area styling */
+        .right-bottom h3 {
+            margin: 10px 10px 5px 10px;
+            font-size: 0.95em;
+        }
+
+        /* Textarea for text editing */
+        #textEditor {
+            flex: 1;
+            margin: 0 10px 10px 10px;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            resize: none;
+        }
+
+        /* Top section of left panel */
+        .left-top {
+            flex: 2;
+            padding: 10px;
+        }
+
+        /* Bottom section of left panel */
+        .left-bottom {
+            flex: 1;
+            padding: 10px;
+            border-top: 1px solid #ccc;
+        }
+
+        /* Embedded video player */
+        iframe {
+            width: 100%;
+            height: 300px;
+        }
+
+        /* PDF canvas viewer */
+        #pdfViewerContainer {
+            flex: 1;
+            overflow: auto;
+            padding: 10px;
+            background: #f7f7f7;
+        }
+
+        #pdfCanvas {
+            display: block;
+            border: 1px solid #ddd;
+            max-width: none;
+            width: auto;
+            height: auto;
+        }
+
+        .pdf-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            background: #fafafa;
+        }
+
+        .pdf-controls button {
+            padding: 6px 10px;
+            font-size: 0.9em;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background: #fff;
+            cursor: pointer;
+        }
+
+        .pdf-controls span {
+            font-size: 0.9em;
+        }
+
+        .right-top h3 {
+            margin: 10px 0 0 10px;
+            font-size: 0.95em;
+        }
+
+        /* Timestamps list layout */
+        .timestamps {
+            display: grid;
+            grid-template-rows: repeat(3, auto);
+            grid-auto-flow: column;
+            gap: 5px;
+            max-width: 100%;
+        }
+
+        .timestamps .time-item {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            gap: 8px;
+            padding: 4px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: #fafafa;
+        }
+
+        /* Waveform visualization canvas */
+        #waveCanvas {
+            width: 100%;
+            height: 80px;
+            background: #111;
+            display: none;
+        }
+
+        /* Recording control bar layout */
+        .record-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Small waveform during recording */
+        #waveCanvas {
+            width: 150px;
+            height: 40px;
+            background: #111;
+            display: none;
+            border-radius: 4px;
+        }
+
+        /* Individual recording item styling */
+        .record-item {
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+        }        
+        
+        /* Large action buttons */
+        .big-btn {
+            font-size: 18px;
+            padding: 12px 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Timestamp item container */
+        .time-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 5px 0;
+        }
+
+        /* Small control buttons */
+        .small-btn {
+            padding: 4px 8px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        
+        /* News dropdown styling */
+        #newsSelect {
+            font-size: 1em;
+            padding: 8px 12px;
+            height: 40px;
+            flex: 1;
+            max-width: 300px;
+            vertical-align: middle;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="left">
+
+        <div class="left-top">
+            <div id="player"></div>
+
+            <button class="big-btn" onclick="recordTime()">記錄斷句時間</button>
+            <div class="timestamps" id="timestamps"></div>
+        </div>
+
+        <div class="left-bottom">
+            <h3>錄音功能</h3>
+
+            <div class="record-bar">
+                <button onclick="toggleRecording()">開始</button>
+                <button onclick="stopRecording()">停止</button>
+
+                <!-- 小波形 -->
+                <canvas id="waveCanvas"></canvas>
+            </div>
+
+            <!-- 🎧 錄音列表 -->
+            <div id="recordingsList"></div>
+        </div>
+
+    </div>
+
+    <div class="right">
+        <div class="right-top">
+            <h3>PDF 顯示區</h3>
+            <div class="pdf-controls">
+                <button onclick="zoomOut()">-</button>
+                <button onclick="zoomIn()">+</button>
+                <button onclick="fitWidth()">Fit Width</button>
+                <span>Zoom: <span id="zoomLevel">150%</span></span>
+                <button onclick="prevPage()">上一頁</button>
+                <button onclick="nextPage()">下一頁</button>
+                <span>頁面: <span id="pageNum">1</span> / <span id="pageCount">1</span></span>
+                <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
+            </div>
+            <div id="pdfViewerContainer">
+                <canvas id="pdfCanvas"></canvas>
+            </div>
+        </div>
+        <div class="right-bottom">
+            <h3>文字編輯區</h3>
+            <textarea id="textEditor" placeholder="在此編輯文字..."></textarea>
+        </div>
+    </div>
+
+</div>
+
+<script>
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("=== Page Load Initialization ===");
+    console.log("DOM Content Loaded");
+    console.log("Player element:", document.getElementById('player'));
+    console.log("PDF Canvas element:", document.getElementById('pdfCanvas'));
+});
+
+// Also initialize on window load
+window.addEventListener('load', function() {
+    console.log("=== Window Load Event ===");
+    console.log("All resources loaded");
+});
+</script>
+
+<script src="https://www.youtube.com/iframe_api"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+<script>
+// Global YouTube player instance
+let player;
+let playerReady = false;
+let currentVideoId = null; // Track currently loaded video ID
+let videoLoadRetryInterval = null; // Track retry interval
+
+// PDF.js globals
+let pdfDoc = null;
+let pageNum = 1;
+let pageRendering = false;
+let pageNumPending = null;
+let scale = 1.5;
+let canvas = document.getElementById('pdfCanvas');
+let ctx = canvas ? canvas.getContext('2d') : null;
+
+// Set PDF.js worker
+pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
+// Cookie functions
+function setCookie(name, value, days = 30) {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = name + '=' + value + ';expires=' + expires.toUTCString() + ';path=/';
+}
+
+function getCookie(name) {
+    const nameEQ = name + '=';
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+        let c = ca[i];
+        while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+    }
+    return null;
+}
+
+// Check if YouTube API loaded successfully
+window.onYouTubeIframeAPIReady = function() {
+    console.log("YouTube IFrame API loaded successfully");
+    initYouTubePlayer();
+};
+
+// Fallback check in case the API doesn't load
+setTimeout(() => {
+    console.log("=== YouTube API Status Check (10s) ===");
+    if (typeof YT === 'undefined') {
+        console.error("YouTube API failed to load within 10 seconds");
+        console.log("Possible causes:");
+        console.log("- Network connectivity issues");
+        console.log("- Content Security Policy blocking YouTube");
+        console.log("- Ad blocker or browser extension interference");
+        console.log("- Firewall blocking YouTube domains");
+        alert("YouTube API failed to load. Check:\n1. Internet connection\n2. Ad blockers\n3. Browser security settings\n4. Firewall settings");
+    } else {
+        console.log("✓ YouTube API is available");
+        if (!playerReady && typeof initYouTubePlayer === 'function') {
+            console.log("Manually initializing YouTube player...");
+            initYouTubePlayer();
+        }
+    }
+}, 10000);
+
+// Initialize YouTube player when API is ready
+function initYouTubePlayer() {
+    console.log("=== YouTube Player Initialization ===");
+    console.log("YouTube API ready, YT object:", typeof YT);
+    console.log("Player element exists:", !!document.getElementById('player'));
+    
+    try {
+        player = new YT.Player('player', {
+            height: '300',
+            width: '100%',
+            videoId: 'UKWnzQfiv1E', // Fixed video ID that always loads
+            events: {
+                'onReady': function(event) {
+                    console.log("✓ YouTube player ready");
+                    playerReady = true;
+                    currentVideoId = 'UKWnzQfiv1E'; // Track the loaded video
+                    // Test basic functionality
+                    console.log("Player methods available:", {
+                        loadVideoById: typeof player.loadVideoById === 'function',
+                        getPlayerState: typeof player.getPlayerState === 'function'
+                    });
+                    // Load saved timestamp from cookie
+                    const savedTime = getCookie('youtubeTimestamp');
+                    if (savedTime) {
+                        const parsed = parseFloat(savedTime);
+                        if (!isNaN(parsed)) {
+                            player.seekTo(parsed, true);
+                            console.log("Loaded YouTube timestamp from cookie:", parsed);
+                        }
+                    }
+                    // Start auto-save interval for timestamp
+                    setInterval(() => {
+                        if (playerReady && player && typeof player.getCurrentTime === 'function') {
+                            const currentTime = Math.floor(player.getCurrentTime());
+                            setCookie('youtubeTimestamp', currentTime);
+                        }
+                    }, 5000);
+                    window.addEventListener('beforeunload', () => {
+                        if (playerReady && player && typeof player.getCurrentTime === 'function') {
+                            setCookie('youtubeTimestamp', Math.floor(player.getCurrentTime()));
+                        }
+                    });
+                    // Auto-load PDF when player is ready
+                    console.log("Calling loadPdfDocument...");
+                    loadPdfDocument();
+                },
+                'onError': function(event) {
+                    console.error("✗ YouTube player error:", event.data);
+                    handleYouTubeError(event.data);
+                },
+                'onStateChange': function(event) {
+                    console.log("YouTube player state changed:", event.data);
+                }
+            }
+        });
+        console.log("✓ YouTube player object created");
+    } catch (error) {
+        console.error("✗ Error creating YouTube player:", error);
+        alert("Failed to create YouTube player: " + error.message);
+    }
+}
+
+// Handle YouTube API errors with detailed messages
+function handleYouTubeError(errorCode) {
+    let errorMessage = "";
+    let suggestions = "";
+
+    switch(errorCode) {
+        case 2:
+            errorMessage = "Invalid video ID or malformed video URL";
+            suggestions = "Check if the video URL is correct";
+            break;
+        case 5:
+            errorMessage = "HTML5 player error - video format not supported";
+            suggestions = "Try a different video or browser";
+            break;
+        case 100:
+            errorMessage = "Video not found or has been removed";
+            suggestions = "The video may have been deleted or made private";
+            break;
+        case 101:
+        case 150:
+            errorMessage = "Video embedding disabled by the video owner";
+            suggestions = "The video owner has disabled embedding. Try a different video";
+            break;
+        case 101:
+            errorMessage = "Video embedding disabled by the video owner";
+            suggestions = "The video owner has disabled embedding";
+            break;
+        default:
+            errorMessage = "Unknown YouTube error: " + errorCode;
+            suggestions = "Check YouTube's status or try again later";
+    }
+
+    console.error("YouTube Error Details:", {
+        code: errorCode,
+        message: errorMessage,
+        suggestions: suggestions
+    });
+
+    // Show error to user
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'background: #ffebee; border: 1px solid #f44336; padding: 10px; margin: 10px 0; border-radius: 4px;';
+    errorDiv.innerHTML = `
+        <strong>YouTube Error:</strong> ${errorMessage}<br>
+        <strong>Suggestions:</strong> ${suggestions}<br>
+        <small>Error Code: ${errorCode}</small>
+    `;
+    document.getElementById('player').appendChild(errorDiv);
+
+    // Auto-remove error message after 10 seconds
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 10000);
+}
+
+// Extract video ID from various YouTube URL formats
+// Supports: youtube.com/watch?v=ID and youtu.be/ID
+function extractVideoID(url) {
+    const regExp = /(?:youtube\.com.*v=|youtu\.be\/)([^&]+)/;
+    const match = url.match(regExp);
+    return match ? match[1] : null;
+}
+
+// Debug functions for troubleshooting YouTube issues
+// Show video loading error to user
+function showVideoError(message) {
+    // Clear any existing error messages
+    const existingErrors = document.querySelectorAll('#player > div[style*="background: #ffebee"]');
+    existingErrors.forEach(el => el.remove());
+
+    const errorDiv = document.createElement('div');
+    errorDiv.style.cssText = 'background: #ffebee; border: 1px solid #f44336; padding: 10px; margin: 10px 0; border-radius: 4px;';
+    errorDiv.innerHTML = `
+        <strong>Video Loading Error:</strong> ${message}<br>
+        <small>Check the browser console for more details</small>
+    `;
+    document.getElementById('player').appendChild(errorDiv);
+
+    // Auto-remove error message after 15 seconds
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 15000);
+}
+
+// Record the current timestamp and add it to the timestamps list
+// Creates a button to jump to the timestamp and a pause button
+function recordTime() {
+    const time = Math.floor(player.getCurrentTime());
+    
+    // Save timestamp to cookie
+    setCookie('youtubeTimestamp', time);
+
+    const container = document.createElement("div");
+    container.className = "time-item";
+
+    // Create button to jump to the recorded time
+    const jumpBtn = document.createElement("button");
+    jumpBtn.innerText = "▶ " + time + "s";
+    jumpBtn.className = "small-btn";
+
+    // Jump button functionality: seek to time and wait before playing
+    jumpBtn.onclick = () => {
+        player.seekTo(time, true);
+
+        // Delay 1 second before resuming playback
+        setTimeout(() => {
+            player.playVideo();
+        }, 1000);
+    };
+
+    // Create pause button
+    const pauseBtn = document.createElement("button");
+    pauseBtn.innerText = "⏸";
+    pauseBtn.className = "small-btn";
+
+    // Pause button functionality
+    pauseBtn.onclick = () => {
+        player.pauseVideo();
+    };
+
+    container.appendChild(jumpBtn);
+    container.appendChild(pauseBtn);
+
+    document.getElementById("timestamps").appendChild(container);
+}
+
+/* 🎤 Audio Recording + Waveform Visualization */
+let mediaRecorder; // Handles recording from microphone
+let audioChunks = []; // Stores audio data chunks
+let audioContext; // Web Audio API context for analysis
+let analyser; // Analyser node for waveform data
+let dataArray; // Array to hold frequency/time domain data
+let animationId; // ID for animation frame
+let recordingCount = 0; // Counter for numbering recordings
+let isRecording = false; // Track recording state
+let isPaused = false; // Track pause state
+let startButton; // Reference to start/pause button
+
+// Toggle recording start/pause
+function toggleRecording() {
+    if (!isRecording) {
+        startRecording();
+    } else if (isPaused) {
+        resumeRecording();
+    } else {
+        pauseRecording();
+    }
+}
+
+// Update the start/pause button text and state
+function updateStartButton() {
+    if (!startButton) {
+        startButton = document.querySelector('button[onclick="toggleRecording()"]');
+    }
+
+    if (startButton) {
+        if (!isRecording) {
+            startButton.innerText = "開始";
+        } else if (isPaused) {
+            startButton.innerText = "開始";
+        } else {
+            startButton.innerText = "暫停";
+        }
+    }
+}
+
+// Pause the current recording
+function pauseRecording() {
+    if (mediaRecorder && isRecording && !isPaused) {
+        mediaRecorder.pause();
+        isPaused = true;
+        updateStartButton();
+    }
+}
+
+// Resume the paused recording
+function resumeRecording() {
+    if (mediaRecorder && isRecording && isPaused) {
+        mediaRecorder.resume();
+        isPaused = false;
+        updateStartButton();
+    }
+}
+
+// Start recording audio from microphone with waveform visualization
+async function startRecording() {
+    // Request microphone access
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+    audioContext = new AudioContext();
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+
+    analyser.fftSize = 1024;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+
+    const canvas = document.getElementById("waveCanvas");
+    canvas.style.display = "block";
+    const ctx = canvas.getContext("2d");
+
+    // Draw waveform continuously during recording
+    function draw() {
+        animationId = requestAnimationFrame(draw);
+        analyser.getByteTimeDomainData(dataArray);
+
+        // Clear canvas with dark background
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // Draw green waveform
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = "#00ff88";
+
+        ctx.beginPath();
+
+        let sliceWidth = canvas.width / dataArray.length;
+        let x = 0;
+
+        // Plot amplitude points
+        for (let i = 0; i < dataArray.length; i++) {
+            let v = dataArray[i] / 128.0;
+            let y = v * canvas.height / 2;
+
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+
+            x += sliceWidth;
+        }
+
+        ctx.stroke();
+    }
+
+    draw();
+
+    // Set up media recorder
+    mediaRecorder = new MediaRecorder(stream);
+    audioChunks = [];
+
+    // Collect audio data
+    mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+
+    // Handle end of recording
+    mediaRecorder.onstop = async () => {
+        cancelAnimationFrame(animationId);
+        document.getElementById("waveCanvas").style.display = "none";
+
+        // Create WebM blob
+        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const webmUrl = URL.createObjectURL(webmBlob);
+
+        // Add recording to UI list with WebM for playback
+        const recordItem = addRecording(webmUrl, "Converting to MP3...");
+
+        // Upload to backend for MP3 conversion
+        const formData = new FormData();
+        formData.append('audio', webmBlob, 'recording.webm');
+
+        try {
+            const response = await fetch('/api/convert_audio', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Get MP3 blob and create URL
+                const blob = await response.blob();
+                const mp3Url = URL.createObjectURL(blob);
+
+                // Update the recording item with download button
+                updateRecordingWithDownload(recordItem, mp3Url);
+
+                console.log("✅ MP3 conversion successful");
+            } else {
+                const statusSpan = recordItem.querySelector('.status-text');
+                if (statusSpan) {
+                    statusSpan.innerText = "MP3 conversion failed on server.";
+                }
+                console.warn("⚠️ MP3 conversion failed on server");
+            }
+        } catch (e) {
+            const statusSpan = recordItem.querySelector('.status-text');
+            if (statusSpan) {
+                statusSpan.innerText = "MP3 conversion failed.";
+            }
+            console.warn("⚠️ MP3 conversion failed:", e);
+        }
+
+        audioChunks = [];
+    };
+
+    mediaRecorder.start();
+    isRecording = true;
+    isPaused = false;
+    updateStartButton();
+}
+
+// Stop the current recording
+function stopRecording() {
+    if (mediaRecorder) {
+        mediaRecorder.stop();
+        isRecording = false;
+        isPaused = false;
+        updateStartButton();
+    }
+}
+
+// Add a new recording to the recordings list with playback and status text
+function addRecording(url, statusText = "Pending conversion...") {
+    recordingCount++;
+
+    const container = document.getElementById("recordingsList");
+
+    const div = document.createElement("div");
+    div.className = "record-item";
+
+    div.innerHTML = `
+        <b>Recording ${recordingCount}</b><br>
+        <audio controls src="${url}"></audio><br>
+        <span class="status-text">${statusText}</span>
+    `;
+
+    // Add new recording to top of list
+    container.prepend(div);
+    return div;
+}
+
+// Update recording item with download button when conversion succeeds
+function updateRecordingWithDownload(recordItem, mp3Url) {
+    const statusSpan = recordItem.querySelector('.status-text');
+    if (statusSpan) {
+        const downloadBtn = document.createElement("button");
+        downloadBtn.innerText = "Download MP3";
+        downloadBtn.className = "small-btn";
+        downloadBtn.onclick = () => {
+            const a = document.createElement("a");
+            a.href = mp3Url;
+            a.download = `recording_${recordingCount}.mp3`;
+            a.click();
+        };
+
+        statusSpan.parentNode.replaceChild(downloadBtn, statusSpan);
+    }
+}
+
+// Load PDF from server using PDF.js
+function loadPdfDocument(pdfPath) {
+    const path = pdfPath || './pdfs/DerKleinePrinz.pdf';
+    const fullUrl = path.startsWith('/') || path.startsWith('http') 
+        ? path 
+        : window.location.origin + '/' + path.replace(/^\.\//, '');
+    
+    console.log("Loading PDF from:", fullUrl);
+    
+    pdfjsLib.getDocument(fullUrl).promise.then(function(pdf) {
+        pdfDoc = pdf;
+        document.getElementById('pageCount').textContent = pdf.numPages;
+        
+        // Load saved page from cookie
+        const savedPage = getCookie('pdfPage');
+        if (savedPage && savedPage <= pdf.numPages) {
+            pageNum = parseInt(savedPage);
+        } else {
+            pageNum = 1;
+        }
+        
+        renderPage(pageNum);
+        console.log("PDF loaded successfully");
+    }).catch(function(error) {
+        console.error("Error loading PDF:", error);
+        alert("Error loading PDF: " + error.message);
+    });
+}
+
+// Render a page of the PDF
+function renderPage(num) {
+    pageRendering = true;
+    pdfDoc.getPage(num).then(function(page) {
+        const viewport = page.getViewport({scale: scale});
+
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        canvas.style.width = viewport.width + 'px';
+        canvas.style.height = viewport.height + 'px';
+
+        const renderContext = {
+            canvasContext: ctx,
+            viewport: viewport
+        };
+
+        const renderTask = page.render(renderContext);
+
+        renderTask.promise.then(function() {
+            pageRendering = false;
+            if (pageNumPending !== null) {
+                renderPage(pageNumPending);
+                pageNumPending = null;
+            }
+        });
+    });
+    
+    document.getElementById('pageNum').textContent = num;
+    updateZoomLevel();
+}
+
+function updateZoomLevel() {
+    const zoomText = document.getElementById('zoomLevel');
+    if (zoomText) {
+        zoomText.textContent = Math.round(scale * 100) + '%';
+    }
+}
+
+function zoomIn() {
+    scale = Math.min(scale + 0.25, 4);
+    if (pdfDoc) queueRenderPage(pageNum);
+}
+
+function zoomOut() {
+    scale = Math.max(scale - 0.25, 0.5);
+    if (pdfDoc) queueRenderPage(pageNum);
+}
+
+function fitWidth() {
+    if (!pdfDoc) return;
+    pdfDoc.getPage(pageNum).then(function(page) {
+        const viewport1 = page.getViewport({scale: 1});
+        const containerWidth = document.getElementById('pdfViewerContainer').clientWidth - 20;
+        scale = Math.max(0.5, containerWidth / viewport1.width);
+        queueRenderPage(pageNum);
+    });
+}
+
+// Queue rendering if another page is rendering
+function queueRenderPage(num) {
+    if (pageRendering) {
+        pageNumPending = num;
+    } else {
+        renderPage(num);
+    }
+}
+
+// Navigate to previous page
+function prevPage() {
+    if (pageNum <= 1) return;
+    pageNum--;
+    queueRenderPage(pageNum);
+    setCookie('pdfPage', pageNum);
+}
+
+// Navigate to next page
+function nextPage() {
+    if (pageNum >= pdfDoc.numPages) return;
+    pageNum++;
+    queueRenderPage(pageNum);
+    setCookie('pdfPage', pageNum);
+}
+
+// Go to specific page
+function goToPage(num) {
+    if (num < 1 || num > pdfDoc.numPages) return;
+    pageNum = parseInt(num);
+    queueRenderPage(pageNum);
+    setCookie('pdfPage', pageNum);
+}
+
+// Fetch PDF and YouTube video for the selected news item
+async function getPDF() {
+    // Show loading spinner
+    const spinner = document.getElementById("loadingSpinner");
+    spinner.style.display = "inline-block";
+
+    // Get selected URL from dropdown
+    const url = document.getElementById("newsSelect").value;
+
+    // Clear current video ID to allow loading new video
+    currentVideoId = null;
+
+    try {
+        // Request content from backend API
+        const res = await fetch("/api/get_dom", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ url })
+        });
+
+        const data = await res.json();
+        console.log("API Response:", data);
+        console.log("Response status:", res.status);
+
+        // Load PDF if available
+        if (data.pdf_url) {
+            document.getElementById("pdfViewer").src =
+                "https://docs.google.com/gview?url=" + data.pdf_url + "&embedded=true";
+        }
+
+        // Load YouTube video if available
+        const videoLinkDisplay = document.getElementById('videoLinkDisplay');
+        if (data.video_url) {
+            console.log("Video URL found:", data.video_url);
+            if (videoLinkDisplay) {
+                videoLinkDisplay.innerHTML = `<strong>Found YouTube link:</strong> <a href="${data.video_url}" target="_blank" rel="noreferrer">${data.video_url}</a>`;
+            }
+            const videoId = extractVideoID(data.video_url);
+            console.log("Extracted video ID:", videoId);
+            if (videoId) {
+                // Clear any existing retry interval
+                if (videoLoadRetryInterval) {
+                    clearInterval(videoLoadRetryInterval);
+                    videoLoadRetryInterval = null;
+                }
+
+                // Function to attempt loading the video
+                const attemptLoad = () => {
+                    if (playerReady && player && typeof player.loadVideoById === 'function') {
+                        // Only load if this is a different video or no video is loaded
+                        if (currentVideoId !== videoId) {
+                            console.log("Player is ready, loading video with ID:", videoId);
+                            try {
+                                player.loadVideoById(videoId);
+                                currentVideoId = videoId; // Mark this video as loaded
+                                console.log("Video load command sent successfully");
+
+                                // Check if video actually loads after 5 seconds
+                                setTimeout(() => {
+                                    try {
+                                        const state = player.getPlayerState();
+                                        console.log("Video state after 5s:", state);
+                                        if (state === -1) {
+                                            console.warn("Video failed to load - may be blocked or unavailable");
+                                            showVideoError("Video failed to load. It may be unavailable, private, or embedding may be disabled.");
+                                        } else if (state >= 0) {
+                                            console.log("Video loaded successfully!");
+                                        }
+                                    } catch (error) {
+                                        console.error("Error checking video load status:", error);
+                                    }
+                                }, 5000);
+
+                            } catch (error) {
+                                console.error("Error loading video:", error);
+                                showVideoError("Error loading video: " + error.message);
+                            }
+                        } else {
+                            console.log("Video already loaded:", videoId);
+                        }
+                        return true; // Success (player ready)
+                    } else {
+                        console.log("Player not ready yet. playerReady:", playerReady, "player exists:", !!player);
+                        return false; // Not ready
+                    }
+                };
+
+                // Try to load immediately
+                if (!attemptLoad()) {
+                    // If not ready, retry every second for up to 10 seconds
+                    let retries = 0;
+                    const maxRetries = 10;
+                    videoLoadRetryInterval = setInterval(() => {
+                        retries++;
+                        console.log(`Video load retry attempt ${retries}/${maxRetries}`);
+                        
+                        if (attemptLoad()) {
+                            console.log("Video loaded successfully on retry", retries);
+                            clearInterval(videoLoadRetryInterval);
+                            videoLoadRetryInterval = null;
+                        } else if (retries >= maxRetries) {
+                            console.error("Failed to load video after", maxRetries, "retries");
+                            clearInterval(videoLoadRetryInterval);
+                            videoLoadRetryInterval = null;
+                        }
+                    }, 1000);
+                }
+            } else {
+                console.warn("Could not extract video ID from URL:", data.video_url);
+                if (videoLinkDisplay) {
+                    videoLinkDisplay.innerHTML = '<strong>Found YouTube link:</strong> (invalid video URL)';
+                }
+            }
+        } else {
+            console.log("No video URL in response");
+            if (videoLinkDisplay) {
+                videoLinkDisplay.innerHTML = '<strong>Found YouTube link:</strong> None';
+            }
+        }
+
+        // Alert user if no content found
+        if (!data.video_url && !data.pdf_url) {
+            alert("No content found");
+        }
+    } catch (e) {
+        alert("An error occurred");
+    }
+
+    // Hide loading spinner
+    spinner.style.display = "none";
+}
+
+// Call loadDWList when page is ready
+window.onload = function() {
+    loadDWList();
+    updateStartButton();
+};
+document.addEventListener("DOMContentLoaded", function() {
+    loadDWList();
+    updateStartButton();
+});
+
+// Load list of news items from backend and populate the dropdown
+async function loadDWList() {
+    try {
+
+        console.log("🚀 loading DW list...");
+
+        // Request news list from backend API
+        const res = await fetch("/api/list_dw");
+
+        console.log("📡 response status:", res.status);
+
+        // Parse response as text first to debug any issues
+        const text = await res.text();
+        console.log("📦 RAW RESPONSE:", text);
+
+        // Attempt to parse JSON
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (e) {
+            console.error("❌ JSON parse failed:", e);
+            return;
+        }
+
+        console.log("✅ PARSED DATA:", data);
+
+        // Get dropdown element
+        const select = document.getElementById("newsSelect");
+        if (!select) {
+            console.error("❌ newsSelect not found in DOM");
+            return;
+        }
+
+        // Clear existing options
+        select.innerHTML = "";
+
+        // Add each news item as an option
+        data.forEach(item => {
+            const option = document.createElement("option");
+            option.value = item.url;
+            option.textContent = item.date;
+            select.appendChild(option);
+        });
+
+        // Select first item by default
+        if (data.length > 0) {
+            select.selectedIndex = 0;
+            // Automatically load the latest news PDF and video
+            console.log("📺 Automatically loading latest news...");
+            await getPDF();
+        }
+
+    } catch (err) {
+        console.error(err);
+    }
+}
+</script>
+
+</body>
+</html>
