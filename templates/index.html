@@ -142,20 +142,17 @@
             height: 300px;
         }
 
-        /* PDF canvas viewer */
+        /* Embedded PDF viewer */
         #pdfViewerContainer {
             flex: 1;
-            overflow: auto;
-            padding: 10px;
             background: #f7f7f7;
         }
 
-        #pdfCanvas {
+        #pdfViewer {
+            width: 100%;
+            height: 100%;
+            border: 0;
             display: block;
-            border: 1px solid #ddd;
-            max-width: none;
-            width: auto;
-            height: auto;
         }
 
         .pdf-controls {
@@ -306,18 +303,8 @@
     <div class="right">
         <div class="right-top">
             <h3>PDF 顯示區</h3>
-            <div class="pdf-controls">
-                <button onclick="zoomOut()">-</button>
-                <button onclick="zoomIn()">+</button>
-                <button onclick="fitWidth()">Fit Width</button>
-                <span>Zoom: <span id="zoomLevel">150%</span></span>
-                <button onclick="prevPage()">上一頁</button>
-                <button onclick="nextPage()">下一頁</button>
-                <span>頁面: <span id="pageNum">1</span> / <span id="pageCount">1</span></span>
-                <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
-            </div>
             <div id="pdfViewerContainer">
-                <canvas id="pdfCanvas"></canvas>
+                <iframe id="pdfViewer" title="PDF 顯示區"></iframe>
             </div>
         </div>
         <div class="right-bottom">
@@ -801,7 +788,7 @@ function updateRecordingWithDownload(recordItem, aacUrl, aacExtension) {
     }
 }
 
-// Load PDF from server using PDF.js
+// Load PDF in the browser's embedded PDF viewer
 function loadPdfDocument(pdfPath) {
     const path = pdfPath || './pdfs/DerKleinePrinz.pdf';
     const fullUrl = path.startsWith('/') || path.startsWith('http') 
@@ -809,25 +796,11 @@ function loadPdfDocument(pdfPath) {
         : window.location.origin + '/' + path.replace(/^\.\//, '');
     
     console.log("Loading PDF from:", fullUrl);
-    
-    pdfjsLib.getDocument(fullUrl).promise.then(function(pdf) {
-        pdfDoc = pdf;
-        document.getElementById('pageCount').textContent = pdf.numPages;
-        
-        // Load saved page from cookie
-        const savedPage = getCookie('pdfPage');
-        if (savedPage && savedPage <= pdf.numPages) {
-            pageNum = parseInt(savedPage);
-        } else {
-            pageNum = 1;
-        }
-        
-        renderPage(pageNum);
-        console.log("PDF loaded successfully");
-    }).catch(function(error) {
-        console.error("Error loading PDF:", error);
-        alert("Error loading PDF: " + error.message);
-    });
+
+    const viewer = document.getElementById('pdfViewer');
+    if (viewer) {
+        viewer.src = fullUrl + '#toolbar=1&navpanes=0&view=FitH';
+    }
 }
 
 // Render a page of the PDF
@@ -947,8 +920,7 @@ async function getPDF() {
 
         // Load PDF if available
         if (data.pdf_url) {
-            document.getElementById("pdfViewer").src =
-                "https://docs.google.com/gview?url=" + data.pdf_url + "&embedded=true";
+            loadPdfDocument(data.pdf_url);
         }
 
         // Load YouTube video if available
