@@ -465,6 +465,9 @@ function initYouTubePlayer() {
             height: '300',
             width: '100%',
             videoId: 'UKWnzQfiv1E', // Fixed video ID that always loads
+            playerVars: {
+                autoplay: 0
+            },
             events: {
                 'onReady': function(event) {
                     console.log("✓ YouTube player ready");
@@ -481,6 +484,7 @@ function initYouTubePlayer() {
                         const parsed = parseFloat(savedTime);
                         if (!isNaN(parsed)) {
                             player.seekTo(parsed, true);
+                            player.pauseVideo();
                             console.log("Loaded YouTube timestamp from cookie:", parsed);
                         }
                     }
@@ -639,8 +643,17 @@ function recordTime() {
         player.pauseVideo();
     };
 
+    // Create delete button
+    const deleteBtn = document.createElement("button");
+    deleteBtn.innerText = "刪除";
+    deleteBtn.className = "small-btn";
+    deleteBtn.onclick = () => {
+        container.remove();
+    };
+
     container.appendChild(jumpBtn);
     container.appendChild(pauseBtn);
+    container.appendChild(deleteBtn);
 
     document.getElementById("timestamps").appendChild(container);
 }
