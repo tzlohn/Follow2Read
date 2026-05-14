@@ -192,6 +192,14 @@
             font-size: 0.9em;
         }
 
+        .pdf-controls input[type="text"] {
+            flex: 1;
+            min-width: 120px;
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
         .right-top h3 {
             margin: 10px 0 0 10px;
             font-size: 0.95em;
@@ -337,6 +345,13 @@
             <div class="pdf-controls">
                 <span>頁面</span>
                 <input type="number" id="pageInput" min="1" style="width: 60px;" oninput="savePdfPage(this.value)" onchange="goToPage(this.value)" onkeydown="handlePdfPageKey(event)">
+                <button onclick="zoomOut()">-</button>
+                <span id="pdfZoomLevel">100%</span>
+                <button onclick="zoomIn()">+</button>
+                <input type="text" id="pdfSearchInput" placeholder="搜尋 PDF" onkeydown="handlePdfSearchKey(event)" oninput="clearPdfSearchStatus()">
+                <button onclick="findPreviousPdfMatch()">上一個</button>
+                <button onclick="findNextPdfMatch()">下一個</button>
+                <span id="pdfSearchStatus"></span>
             </div>
             <div id="pdfViewerContainer">
                 <div id="pdfViewer"></div>
@@ -382,11 +397,15 @@ let pdfDoc = null;
 let pageNum = 1;
 let pageRendering = false;
 let pageNumPending = null;
-let scale = 1.5;
+let scale = 1;
 let canvas = document.getElementById('pdfCanvas');
 let ctx = canvas ? canvas.getContext('2d') : null;
 let currentPdfUrl = null;
 let pdfScrollTimer = null;
+let pdfTextCache = [];
+let pdfSearchQuery = "";
+let pdfSearchResults = [];
+let pdfSearchIndex = -1;
 
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -853,11 +872,9 @@ function loadPdfDocument(pdfPath) {
 
     pdfjsLib.getDocument(currentPdfUrl).promise.then(async function(pdf) {
         pdfDoc = pdf;
-        viewer.innerHTML = '';
-
-        for (let i = 1; i <= pdf.numPages; i++) {
-            await renderPdfPage(i, viewer, container);
-        }
+        pdfTextCache = [];
+        resetPdfSearch();
+        await renderAllPdfPages();
 
         requestAnimationFrame(() => {
             scrollToPdfPage(pageNum, false);
@@ -870,11 +887,25 @@ function loadPdfDocument(pdfPath) {
     });
 }
 
+async function renderAllPdfPages() {
+    const viewer = document.getElementById('pdfViewer');
+    const container = document.getElementById('pdfViewerContainer');
+    if (!pdfDoc || !viewer || !container) return;
+
+    viewer.innerHTML = '';
+    updatePdfZoomLevel();
+
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+        await renderPdfPage(i, viewer, container);
+    }
+}
+
 async function renderPdfPage(num, viewer, container) {
     const page = await pdfDoc.getPage(num);
     const baseViewport = page.getViewport({scale: 1});
     const availableWidth = Math.max(container.clientWidth - 40, 240);
-    const renderScale = Math.max(0.6, Math.min(2, availableWidth / baseViewport.width));
+    const fitScale = availableWidth / baseViewport.width;
+    const renderScale = Math.max(0.4, Math.min(4, fitScale * scale));
     const viewport = page.getViewport({scale: renderScale});
     const pageWrapper = document.createElement('div');
     const canvas = document.createElement('canvas');
@@ -904,6 +935,114 @@ function handlePdfPageKey(event) {
     if (event.key === 'Enter') {
         goToPage(event.target.value);
     }
+}
+
+function updatePdfZoomLevel() {
+    const zoomText = document.getElementById('pdfZoomLevel');
+    if (zoomText) {
+        zoomText.textContent = Math.round(scale * 100) + '%';
+    }
+}
+
+async function zoomIn() {
+    if (!pdfDoc) return;
+    const targetPage = pageNum;
+    scale = Math.min(scale + 0.25, 3);
+    await renderAllPdfPages();
+    requestAnimationFrame(() => scrollToPdfPage(targetPage, false));
+}
+
+async function zoomOut() {
+    if (!pdfDoc) return;
+    const targetPage = pageNum;
+    scale = Math.max(scale - 0.25, 0.5);
+    await renderAllPdfPages();
+    requestAnimationFrame(() => scrollToPdfPage(targetPage, false));
+}
+
+async function getPdfPageText(num) {
+    if (pdfTextCache[num]) {
+        return pdfTextCache[num];
+    }
+
+    const page = await pdfDoc.getPage(num);
+    const textContent = await page.getTextContent();
+    const pageText = textContent.items.map(item => item.str).join(' ');
+    pdfTextCache[num] = pageText;
+    return pageText;
+}
+
+function resetPdfSearch() {
+    pdfSearchQuery = "";
+    pdfSearchResults = [];
+    pdfSearchIndex = -1;
+    clearPdfSearchStatus();
+}
+
+function clearPdfSearchStatus() {
+    const status = document.getElementById('pdfSearchStatus');
+    if (status) {
+        status.textContent = "";
+    }
+}
+
+function handlePdfSearchKey(event) {
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        searchPdf(event.shiftKey ? -1 : 1);
+    }
+}
+
+function findNextPdfMatch() {
+    searchPdf(1);
+}
+
+function findPreviousPdfMatch() {
+    searchPdf(-1);
+}
+
+async function searchPdf(direction) {
+    if (!pdfDoc) return;
+
+    const input = document.getElementById('pdfSearchInput');
+    const status = document.getElementById('pdfSearchStatus');
+    const query = input ? input.value.trim() : "";
+    if (!query) {
+        resetPdfSearch();
+        return;
+    }
+
+    if (query !== pdfSearchQuery) {
+        pdfSearchQuery = query;
+        pdfSearchResults = [];
+        pdfSearchIndex = -1;
+
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            const pageText = await getPdfPageText(i);
+            if (pageText.toLowerCase().includes(query.toLowerCase())) {
+                pdfSearchResults.push(i);
+            }
+        }
+    }
+
+    if (!pdfSearchResults.length) {
+        if (status) {
+            status.textContent = "0 / 0";
+        }
+        return;
+    }
+
+    if (pdfSearchIndex === -1) {
+        pdfSearchIndex = direction > 0 ? 0 : pdfSearchResults.length - 1;
+    } else {
+        pdfSearchIndex = (pdfSearchIndex + direction + pdfSearchResults.length) % pdfSearchResults.length;
+    }
+
+    if (status) {
+        status.textContent = `${pdfSearchIndex + 1} / ${pdfSearchResults.length}`;
+    }
+
+    goToPage(pdfSearchResults[pdfSearchIndex]);
 }
 
 function handlePdfScroll() {
@@ -951,6 +1090,11 @@ function scrollToPdfPage(num, shouldSave = true) {
     container.scrollTop += page.getBoundingClientRect().top - container.getBoundingClientRect().top;
     if (shouldSave) {
         savePdfPage(num);
+    }
+
+    const pageInput = document.getElementById('pageInput');
+    if (pageInput) {
+        pageInput.value = num;
     }
 }
 
