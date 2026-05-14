@@ -143,41 +143,12 @@
         }
 
         /* PDF canvas viewer */
-        #pdfViewerContainer {
-            flex: 1;
-            overflow: auto;
-            padding: 10px;
-            background: #f7f7f7;
-        }
-
         #pdfCanvas {
-            display: block;
-            border: 1px solid #ddd;
-            max-width: none;
-            width: auto;
+            width: 100%;
             height: auto;
-        }
-
-        .pdf-controls {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px;
-            border-bottom: 1px solid #eee;
-            background: #fafafa;
-        }
-
-        .pdf-controls button {
-            padding: 6px 10px;
-            font-size: 0.9em;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            background: #fff;
-            cursor: pointer;
-        }
-
-        .pdf-controls span {
-            font-size: 0.9em;
+            display: block;
+            border: none;
+            max-width: 100%;
         }
 
         .right-top h3 {
@@ -306,19 +277,13 @@
     <div class="right">
         <div class="right-top">
             <h3>PDF 顯示區</h3>
-            <div class="pdf-controls">
-                <button onclick="zoomOut()">-</button>
-                <button onclick="zoomIn()">+</button>
-                <button onclick="fitWidth()">Fit Width</button>
-                <span>Zoom: <span id="zoomLevel">150%</span></span>
+            <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                 <button onclick="prevPage()">上一頁</button>
-                <button onclick="nextPage()">下一頁</button>
                 <span>頁面: <span id="pageNum">1</span> / <span id="pageCount">1</span></span>
+                <button onclick="nextPage()">下一頁</button>
                 <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
             </div>
-            <div id="pdfViewerContainer">
-                <canvas id="pdfCanvas"></canvas>
-            </div>
+            <canvas id="pdfCanvas" style="width: 100%; height: 100%; border: 1px solid #ddd;"></canvas>
         </div>
         <div class="right-bottom">
             <h3>文字編輯區</h3>
@@ -854,12 +819,14 @@ function loadPdfDocument(pdfPath) {
 function renderPage(num) {
     pageRendering = true;
     pdfDoc.getPage(num).then(function(page) {
-        const viewport = page.getViewport({scale: scale});
+        const parentWidth = canvas.parentElement.clientWidth;
+        const desiredScale = Math.min(scale, parentWidth / page.getViewport({scale: 1}).width);
+        const viewport = page.getViewport({scale: desiredScale});
 
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        canvas.style.width = viewport.width + 'px';
-        canvas.style.height = viewport.height + 'px';
+        canvas.style.width = '100%';
+        canvas.style.height = 'auto';
 
         const renderContext = {
             canvasContext: ctx,
@@ -878,34 +845,6 @@ function renderPage(num) {
     });
     
     document.getElementById('pageNum').textContent = num;
-    updateZoomLevel();
-}
-
-function updateZoomLevel() {
-    const zoomText = document.getElementById('zoomLevel');
-    if (zoomText) {
-        zoomText.textContent = Math.round(scale * 100) + '%';
-    }
-}
-
-function zoomIn() {
-    scale = Math.min(scale + 0.25, 4);
-    if (pdfDoc) queueRenderPage(pageNum);
-}
-
-function zoomOut() {
-    scale = Math.max(scale - 0.25, 0.5);
-    if (pdfDoc) queueRenderPage(pageNum);
-}
-
-function fitWidth() {
-    if (!pdfDoc) return;
-    pdfDoc.getPage(pageNum).then(function(page) {
-        const viewport1 = page.getViewport({scale: 1});
-        const containerWidth = document.getElementById('pdfViewerContainer').clientWidth - 20;
-        scale = Math.max(0.5, containerWidth / viewport1.width);
-        queueRenderPage(pageNum);
-    });
 }
 
 // Queue rendering if another page is rendering
