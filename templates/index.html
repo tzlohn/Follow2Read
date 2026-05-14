@@ -232,7 +232,23 @@
             padding: 8px;
             border: 1px solid #ccc;
             border-radius: 6px;
-        }        
+        }
+
+        .recording-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+
+        .recording-row audio {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .recording-row .small-btn {
+            flex: 0 0 auto;
+        }
         
         /* Large action buttons */
         .big-btn {
@@ -305,7 +321,7 @@
             <h3>PDF 顯示區</h3>
             <div class="pdf-controls">
                 <span>頁面</span>
-                <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
+                <input type="number" id="pageInput" min="1" style="width: 60px;" oninput="savePdfPage(this.value)" onchange="goToPage(this.value)" onkeydown="handlePdfPageKey(event)">
             </div>
             <div id="pdfViewerContainer">
                 <iframe id="pdfViewer" title="PDF 顯示區"></iframe>
@@ -355,6 +371,7 @@ let scale = 1.5;
 let canvas = document.getElementById('pdfCanvas');
 let ctx = canvas ? canvas.getContext('2d') : null;
 let currentPdfUrl = null;
+let pdfPageWatcher = null;
 
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -765,9 +782,11 @@ function addRecording(url, statusText = "Pending conversion...") {
     div.className = "record-item";
 
     div.innerHTML = `
-        <b>Recording ${recordingCount}</b><br>
-        <audio controls src="${url}"></audio><br>
-        <span class="status-text">${statusText}</span>
+        <b>Recording ${recordingCount}</b>
+        <div class="recording-row">
+            <audio controls src="${url}"></audio>
+            <span class="status-text">${statusText}</span>
+        </div>
     `;
 
     // Add new recording to top of list
@@ -813,8 +832,55 @@ function loadPdfDocument(pdfPath) {
     const viewer = document.getElementById('pdfViewer');
     if (viewer) {
         viewer.src = currentPdfUrl + '#page=' + pageNum + '&toolbar=1&navpanes=0&view=FitH';
+        startPdfPageWatcher(viewer);
     }
 }
+
+function savePdfPage(num) {
+    const parsedPage = parseInt(num, 10);
+    if (!Number.isInteger(parsedPage) || parsedPage < 1) return;
+    pageNum = parsedPage;
+    setCookie('pdfPage', pageNum);
+}
+
+function handlePdfPageKey(event) {
+    if (event.key === 'Enter') {
+        goToPage(event.target.value);
+    }
+}
+
+function startPdfPageWatcher(viewer) {
+    if (pdfPageWatcher) {
+        clearInterval(pdfPageWatcher);
+    }
+
+    pdfPageWatcher = setInterval(() => {
+        try {
+            const hash = viewer.contentWindow.location.hash;
+            const match = hash.match(/[?&#]page=(\d+)/);
+            if (match) {
+                const visiblePage = parseInt(match[1], 10);
+                if (Number.isInteger(visiblePage) && visiblePage > 0 && visiblePage !== pageNum) {
+                    savePdfPage(visiblePage);
+                    const pageInput = document.getElementById('pageInput');
+                    if (pageInput) {
+                        pageInput.value = visiblePage;
+                    }
+                }
+            }
+        } catch (e) {
+            clearInterval(pdfPageWatcher);
+            pdfPageWatcher = null;
+        }
+    }, 1000);
+}
+
+window.addEventListener('beforeunload', () => {
+    const pageInput = document.getElementById('pageInput');
+    if (pageInput) {
+        savePdfPage(pageInput.value);
+    }
+});
 
 // Render a page of the PDF
 function renderPage(num) {
@@ -903,12 +969,12 @@ function nextPage() {
 function goToPage(num) {
     const parsedPage = parseInt(num, 10);
     if (!Number.isInteger(parsedPage) || parsedPage < 1) return;
-    pageNum = parsedPage;
-    setCookie('pdfPage', pageNum);
+    savePdfPage(parsedPage);
 
     const viewer = document.getElementById('pdfViewer');
     if (viewer && currentPdfUrl) {
         viewer.src = currentPdfUrl + '#page=' + pageNum + '&toolbar=1&navpanes=0&view=FitH';
+        startPdfPageWatcher(viewer);
     }
 }
 
