@@ -303,6 +303,10 @@
     <div class="right">
         <div class="right-top">
             <h3>PDF 顯示區</h3>
+            <div class="pdf-controls">
+                <span>頁面</span>
+                <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
+            </div>
             <div id="pdfViewerContainer">
                 <iframe id="pdfViewer" title="PDF 顯示區"></iframe>
             </div>
@@ -350,6 +354,7 @@ let pageNumPending = null;
 let scale = 1.5;
 let canvas = document.getElementById('pdfCanvas');
 let ctx = canvas ? canvas.getContext('2d') : null;
+let currentPdfUrl = null;
 
 // Set PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
@@ -794,12 +799,20 @@ function loadPdfDocument(pdfPath) {
     const fullUrl = path.startsWith('/') || path.startsWith('http') 
         ? path 
         : window.location.origin + '/' + path.replace(/^\.\//, '');
+    const savedPage = parseInt(getCookie('pdfPage'), 10);
+    pageNum = Number.isInteger(savedPage) && savedPage > 0 ? savedPage : 1;
+    currentPdfUrl = fullUrl.split('#')[0];
     
     console.log("Loading PDF from:", fullUrl);
 
+    const pageInput = document.getElementById('pageInput');
+    if (pageInput) {
+        pageInput.value = pageNum;
+    }
+
     const viewer = document.getElementById('pdfViewer');
     if (viewer) {
-        viewer.src = fullUrl + '#toolbar=1&navpanes=0&view=FitH';
+        viewer.src = currentPdfUrl + '#page=' + pageNum + '&toolbar=1&navpanes=0&view=FitH';
     }
 }
 
@@ -888,10 +901,15 @@ function nextPage() {
 
 // Go to specific page
 function goToPage(num) {
-    if (num < 1 || num > pdfDoc.numPages) return;
-    pageNum = parseInt(num);
-    queueRenderPage(pageNum);
+    const parsedPage = parseInt(num, 10);
+    if (!Number.isInteger(parsedPage) || parsedPage < 1) return;
+    pageNum = parsedPage;
     setCookie('pdfPage', pageNum);
+
+    const viewer = document.getElementById('pdfViewer');
+    if (viewer && currentPdfUrl) {
+        viewer.src = currentPdfUrl + '#page=' + pageNum + '&toolbar=1&navpanes=0&view=FitH';
+    }
 }
 
 // Fetch PDF and YouTube video for the selected news item
