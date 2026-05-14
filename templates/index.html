@@ -1,8 +1,8 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>撠?摮?頝???/title>
+    <title>小王子的跟屁蟲</title>
 
     <style>
         /* Base body styling */
@@ -282,22 +282,22 @@
         <div class="left-top">
             <div id="player"></div>
 
-            <button class="big-btn" onclick="recordTime()">閮??瑕??</button>
+            <button class="big-btn" onclick="recordTime()">記錄斷句時間</button>
             <div class="timestamps" id="timestamps"></div>
         </div>
 
         <div class="left-bottom">
-            <h3>??</h3>
+            <h3>錄音功能</h3>
 
             <div class="record-bar">
-                <button onclick="toggleRecording()">??</button>
-                <button onclick="stopRecording()">?迫</button>
+                <button onclick="toggleRecording()">開始</button>
+                <button onclick="stopRecording()">停止</button>
 
-                <!-- 撠郭敶?-->
+                <!-- 小波形 -->
                 <canvas id="waveCanvas"></canvas>
             </div>
 
-            <!-- ? ??” -->
+            <!-- 🎧 錄音列表 -->
             <div id="recordingsList"></div>
         </div>
 
@@ -305,15 +305,15 @@
 
     <div class="right">
         <div class="right-top">
-            <h3>PDF 憿舐內?</h3>
+            <h3>PDF 顯示區</h3>
             <div class="pdf-controls">
                 <button onclick="zoomOut()">-</button>
                 <button onclick="zoomIn()">+</button>
                 <button onclick="fitWidth()">Fit Width</button>
                 <span>Zoom: <span id="zoomLevel">150%</span></span>
-                <button onclick="prevPage()">銝???/button>
-                <button onclick="nextPage()">銝???/button>
-                <span>?: <span id="pageNum">1</span> / <span id="pageCount">1</span></span>
+                <button onclick="prevPage()">上一頁</button>
+                <button onclick="nextPage()">下一頁</button>
+                <span>頁面: <span id="pageNum">1</span> / <span id="pageCount">1</span></span>
                 <input type="number" id="pageInput" min="1" style="width: 60px;" onchange="goToPage(this.value)">
             </div>
             <div id="pdfViewerContainer">
@@ -321,8 +321,8 @@
             </div>
         </div>
         <div class="right-bottom">
-            <h3>??蝺刻摩?</h3>
-            <textarea id="textEditor" placeholder="?冽迨蝺刻摩??..."></textarea>
+            <h3>文字編輯區</h3>
+            <textarea id="textEditor" placeholder="在此編輯文字..."></textarea>
         </div>
     </div>
 
@@ -403,7 +403,7 @@ setTimeout(() => {
         console.log("- Firewall blocking YouTube domains");
         alert("YouTube API failed to load. Check:\n1. Internet connection\n2. Ad blockers\n3. Browser security settings\n4. Firewall settings");
     } else {
-        console.log("??YouTube API is available");
+        console.log("✓ YouTube API is available");
         if (!playerReady && typeof initYouTubePlayer === 'function') {
             console.log("Manually initializing YouTube player...");
             initYouTubePlayer();
@@ -424,7 +424,7 @@ function initYouTubePlayer() {
             videoId: 'UKWnzQfiv1E', // Fixed video ID that always loads
             events: {
                 'onReady': function(event) {
-                    console.log("??YouTube player ready");
+                    console.log("✓ YouTube player ready");
                     playerReady = true;
                     currentVideoId = 'UKWnzQfiv1E'; // Track the loaded video
                     // Test basic functionality
@@ -458,7 +458,7 @@ function initYouTubePlayer() {
                     loadPdfDocument();
                 },
                 'onError': function(event) {
-                    console.error("??YouTube player error:", event.data);
+                    console.error("✗ YouTube player error:", event.data);
                     handleYouTubeError(event.data);
                 },
                 'onStateChange': function(event) {
@@ -466,9 +466,9 @@ function initYouTubePlayer() {
                 }
             }
         });
-        console.log("??YouTube player object created");
+        console.log("✓ YouTube player object created");
     } catch (error) {
-        console.error("??Error creating YouTube player:", error);
+        console.error("✗ Error creating YouTube player:", error);
         alert("Failed to create YouTube player: " + error.message);
     }
 }
@@ -573,7 +573,7 @@ function recordTime() {
 
     // Create button to jump to the recorded time
     const jumpBtn = document.createElement("button");
-    jumpBtn.innerText = "??" + time + "s";
+    jumpBtn.innerText = "▶ " + time + "s";
     jumpBtn.className = "small-btn";
 
     // Jump button functionality: seek to time and wait before playing
@@ -588,7 +588,7 @@ function recordTime() {
 
     // Create pause button
     const pauseBtn = document.createElement("button");
-    pauseBtn.innerText = "Pause";
+    pauseBtn.innerText = "⏸";
     pauseBtn.className = "small-btn";
 
     // Pause button functionality
@@ -602,7 +602,7 @@ function recordTime() {
     document.getElementById("timestamps").appendChild(container);
 }
 
-/* ? Audio Recording + Waveform Visualization */
+/* 🎤 Audio Recording + Waveform Visualization */
 let mediaRecorder; // Handles recording from microphone
 let audioChunks = []; // Stores audio data chunks
 let audioContext; // Web Audio API context for analysis
@@ -613,29 +613,6 @@ let recordingCount = 0; // Counter for numbering recordings
 let isRecording = false; // Track recording state
 let isPaused = false; // Track pause state
 let startButton; // Reference to start/pause button
-let recordingStream = null; // Current microphone stream
-
-// Choose the best browser-supported recording format.
-// AAC is usually exposed as audio/mp4 and downloaded as .m4a.
-function getBestAudioFormat() {
-    const formats = [
-        { mimeType: "audio/aac", extension: "aac", label: "AAC" },
-        { mimeType: "audio/mp4;codecs=mp4a.40.2", extension: "m4a", label: "AAC (M4A)" },
-        { mimeType: "audio/mp4", extension: "m4a", label: "AAC (M4A)" },
-        { mimeType: "audio/webm;codecs=opus", extension: "webm", label: "WebM audio" },
-        { mimeType: "audio/webm", extension: "webm", label: "WebM audio" }
-    ];
-
-    if (!window.MediaRecorder) {
-        throw new Error("MediaRecorder is not supported in this browser.");
-    }
-
-    return formats.find(format => MediaRecorder.isTypeSupported(format.mimeType)) || {
-        mimeType: "",
-        extension: "webm",
-        label: "Browser default audio"
-    };
-}
 
 // Toggle recording start/pause
 function toggleRecording() {
@@ -656,11 +633,11 @@ function updateStartButton() {
 
     if (startButton) {
         if (!isRecording) {
-            startButton.innerText = "??";
+            startButton.innerText = "開始";
         } else if (isPaused) {
-            startButton.innerText = "??";
+            startButton.innerText = "開始";
         } else {
-            startButton.innerText = "?怠?";
+            startButton.innerText = "暫停";
         }
     }
 }
@@ -686,10 +663,10 @@ function resumeRecording() {
 // Start recording audio from microphone with waveform visualization
 async function startRecording() {
     // Request microphone access
-    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
     audioContext = new AudioContext();
-    const source = audioContext.createMediaStreamSource(recordingStream);
+    const source = audioContext.createMediaStreamSource(stream);
     analyser = audioContext.createAnalyser();
     source.connect(analyser);
 
@@ -734,37 +711,57 @@ async function startRecording() {
 
     draw();
 
-    // Set up media recorder with direct AAC download when supported
-    const audioFormat = getBestAudioFormat();
-    const recorderOptions = audioFormat.mimeType ? { mimeType: audioFormat.mimeType } : undefined;
-    mediaRecorder = new MediaRecorder(recordingStream, recorderOptions);
+    // Set up media recorder
+    mediaRecorder = new MediaRecorder(stream);
     audioChunks = [];
 
     // Collect audio data
     mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
 
     // Handle end of recording
-    mediaRecorder.onstop = () => {
+    mediaRecorder.onstop = async () => {
         cancelAnimationFrame(animationId);
         document.getElementById("waveCanvas").style.display = "none";
 
-        const recordedType = mediaRecorder.mimeType || audioFormat.mimeType || "audio/webm";
-        const audioBlob = new Blob(audioChunks, { type: recordedType });
-        const audioUrl = URL.createObjectURL(audioBlob);
-        const recordedFormat = recordedType.includes("aac") || recordedType.includes("mp4")
-            ? audioFormat
-            : { mimeType: recordedType, extension: audioFormat.extension, label: audioFormat.label };
+        // Create WebM blob
+        const webmBlob = new Blob(audioChunks, { type: "audio/webm" });
+        const webmUrl = URL.createObjectURL(webmBlob);
 
-        const recordItem = addRecording(audioUrl, `Ready: ${recordedFormat.label}`);
-        updateRecordingWithDownload(recordItem, audioUrl, recordedFormat.extension, recordedFormat.label);
+        // Add recording to UI list with WebM for playback
+        const recordItem = addRecording(webmUrl, "Converting to MP3...");
 
-        if (recordingStream) {
-            recordingStream.getTracks().forEach(track => track.stop());
-            recordingStream = null;
-        }
-        if (audioContext) {
-            audioContext.close();
-            audioContext = null;
+        // Upload to backend for MP3 conversion
+        const formData = new FormData();
+        formData.append('audio', webmBlob, 'recording.webm');
+
+        try {
+            const response = await fetch('/api/convert_audio', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // Get MP3 blob and create URL
+                const blob = await response.blob();
+                const mp3Url = URL.createObjectURL(blob);
+
+                // Update the recording item with download button
+                updateRecordingWithDownload(recordItem, mp3Url);
+
+                console.log("✅ MP3 conversion successful");
+            } else {
+                const statusSpan = recordItem.querySelector('.status-text');
+                if (statusSpan) {
+                    statusSpan.innerText = "MP3 conversion failed on server.";
+                }
+                console.warn("⚠️ MP3 conversion failed on server");
+            }
+        } catch (e) {
+            const statusSpan = recordItem.querySelector('.status-text');
+            if (statusSpan) {
+                statusSpan.innerText = "MP3 conversion failed.";
+            }
+            console.warn("⚠️ MP3 conversion failed:", e);
         }
 
         audioChunks = [];
@@ -786,16 +783,14 @@ function stopRecording() {
     }
 }
 
-
 // Add a new recording to the recordings list with playback and status text
-function addRecording(url, statusText = "Ready to download") {
+function addRecording(url, statusText = "Pending conversion...") {
     recordingCount++;
 
     const container = document.getElementById("recordingsList");
 
     const div = document.createElement("div");
     div.className = "record-item";
-    div.dataset.recordingNumber = recordingCount;
 
     div.innerHTML = `
         <b>Recording ${recordingCount}</b><br>
@@ -808,18 +803,17 @@ function addRecording(url, statusText = "Ready to download") {
     return div;
 }
 
-// Update recording item with a direct download button
-function updateRecordingWithDownload(recordItem, audioUrl, extension, formatLabel) {
+// Update recording item with download button when conversion succeeds
+function updateRecordingWithDownload(recordItem, mp3Url) {
     const statusSpan = recordItem.querySelector('.status-text');
     if (statusSpan) {
         const downloadBtn = document.createElement("button");
-        downloadBtn.innerText = `Download ${formatLabel}`;
+        downloadBtn.innerText = "Download MP3";
         downloadBtn.className = "small-btn";
         downloadBtn.onclick = () => {
             const a = document.createElement("a");
-            const recordingNumber = recordItem.dataset.recordingNumber || recordingCount;
-            a.href = audioUrl;
-            a.download = `recording_${recordingNumber}.${extension}`;
+            a.href = mp3Url;
+            a.download = `recording_${recordingCount}.mp3`;
             a.click();
         };
 
@@ -1093,32 +1087,32 @@ document.addEventListener("DOMContentLoaded", function() {
 async function loadDWList() {
     try {
 
-        console.log("?? loading DW list...");
+        console.log("🚀 loading DW list...");
 
         // Request news list from backend API
         const res = await fetch("/api/list_dw");
 
-        console.log("? response status:", res.status);
+        console.log("📡 response status:", res.status);
 
         // Parse response as text first to debug any issues
         const text = await res.text();
-        console.log("? RAW RESPONSE:", text);
+        console.log("📦 RAW RESPONSE:", text);
 
         // Attempt to parse JSON
         let data;
         try {
             data = JSON.parse(text);
         } catch (e) {
-            console.error("??JSON parse failed:", e);
+            console.error("❌ JSON parse failed:", e);
             return;
         }
 
-        console.log("??PARSED DATA:", data);
+        console.log("✅ PARSED DATA:", data);
 
         // Get dropdown element
         const select = document.getElementById("newsSelect");
         if (!select) {
-            console.error("??newsSelect not found in DOM");
+            console.error("❌ newsSelect not found in DOM");
             return;
         }
 
@@ -1137,7 +1131,7 @@ async function loadDWList() {
         if (data.length > 0) {
             select.selectedIndex = 0;
             // Automatically load the latest news PDF and video
-            console.log("? Automatically loading latest news...");
+            console.log("📺 Automatically loading latest news...");
             await getPDF();
         }
 
